@@ -1,0 +1,122 @@
+
+{
+  "name": "arca-api-tordini",
+  "version": "0.1.0",
+  "description": "Módulo TypeScript para facturación electrónica ARCA/AFIP (WSAA + WSFEv1) y generación de PDFs de comprobantes. Agnóstico de framework, configurable, sin hardcodeos.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./domain": {
+      "types": "./dist/domain/index.d.ts",
+      "import": "./dist/domain/index.js"
+    },
+    "./services": {
+      "types": "./dist/services/index.d.ts",
+      "import": "./dist/services/index.js"
+    },
+    "./http": {
+      "types": "./dist/http/index.d.ts",
+      "import": "./dist/http/index.js"
+    }
+  },
+  "bin": {
+    "arca-tra": "./dist/bin/generate-tra.js",
+    "arca-sign-cms": "./dist/bin/sign-cms.js",
+    "arca-submit-login": "./dist/bin/submit-login.js",
+    "arca-wsfev1-dummy": "./dist/bin/wsfev1-dummy.js",
+    "arca-wsfev1-params": "./dist/bin/wsfev1-params.js",
+    "arca-pipeline": "./dist/bin/pipeline.js"
+  },
+  "files": [
+    "dist",
+    "certs/.gitkeep",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "arca:tra:generate": "tsx src/bin/generate-tra.ts",
+    "arca:sign-cms": "tsx src/bin/sign-cms.ts",
+    "arca:submit-login": "tsx src/bin/submit-login.ts",
+    "arca:wsfev1:dummy": "tsx src/bin/wsfev1-dummy.ts",
+    "arca:wsfev1:params": "tsx src/bin/wsfev1-params.ts",
+    "arca:pipeline:homo": "cross-env ARCA_ENV=homologacion tsx src/bin/pipeline.ts",
+    "arca:pipeline:prod": "cross-env ARCA_ENV=produccion tsx src/bin/pipeline.ts"
+  },
+  "keywords": [
+    "afip",
+    "arca",
+    "facturacion-electronica",
+    "wsfe",
+    "wsaa",
+    "cae",
+    "argentina",
+    "fiscal",
+    "electronic-billing",
+    "soap",
+    "typescript"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
+    "p-queue": "^9.1.0",
+    "puppeteer": "^24.0.0",
+    "qrcode": "^1.5.4",
+    "xml2js": "^0.6.2",
+    "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.5.0",
+    "pino-http": "^8.6.0"
+  },
+  "peerDependenciesMeta": {
+    "express": { "optional": true },
+    "jsonwebtoken": { "optional": true },
+    "helmet": { "optional": true },
+    "cors": { "optional": true },
+    "pino": { "optional": true },
+    "pino-http": { "optional": true },
+    "express-rate-limit": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.12.7",
+    "@types/qrcode": "^1.5.6",
+    "@types/supertest": "^6.0.2",
+    "@types/xml2js": "^0.4.14",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "cross-env": "^10.1.0",
+    "eslint": "^8.57.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3",
+    "vitest": "^1.6.1"
+  }
+}

@@ -1,0 +1,33 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Certs (nunca commitear)
+certs/**/*.crt
+certs/**/*.key
+certs/**/*.pem
+certs/**/TA_*.xml
+!certs/**/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+*.tsbuildinfo
+.turbo/
+.nyc_output/
+
+# Test artifacts
+playwright-report/
+test-results/
+.vitest/
