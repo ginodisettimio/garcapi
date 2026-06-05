@@ -16,7 +16,9 @@ RUN apt-get update \
 COPY package.json package-lock.json* tsconfig.json tsconfig.build.json ./
 
 # Instalar todas las deps (incluyendo dev) para compilar
-RUN npm ci || npm install
+# --ignore-scripts evita que el hook `prepare` (que dispara `npm run build`)
+# corra antes de que tengamos el código fuente copiado
+RUN npm ci --ignore-scripts || npm install --ignore-scripts
 
 # Copiar el resto del código
 COPY . .
@@ -99,7 +101,7 @@ RUN groupadd -r arca && useradd -r -g arca -m arca \
 
 # Instalar solo deps de producción
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev || npm install --omit=dev \
+RUN npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts \
     && npm cache clean --force
 
 # Copiar artefactos del build
