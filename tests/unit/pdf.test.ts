@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
 import { buildQrUrl } from '../../src/pdf/qr.js'
-import { fillTemplate, renderFacturaHtml, renderPresupuestoHtml, type FacturaPdfData } from '../../src/pdf/pdf-service.js'
+import { fillTemplate, renderFacturaHtml, renderPresupuestoHtml, renderTicketHtml, type FacturaPdfData } from '../../src/pdf/pdf-service.js'
 
 const facturaTemplate = readFileSync(new URL('../../src/pdf/templates/factura.html', import.meta.url), 'utf8')
 const presupuestoTemplate = readFileSync(new URL('../../src/pdf/templates/presupuesto.html', import.meta.url), 'utf8')
+const ticketTemplate = readFileSync(new URL('../../src/pdf/templates/ticket.html', import.meta.url), 'utf8')
 
 function facturaB(overrides: Partial<FacturaPdfData> = {}): FacturaPdfData {
   return {
@@ -127,5 +128,32 @@ describe('renderPresupuestoHtml', () => {
     expect(html).toContain('Referencia: Pedido 123')
     expect(html).toContain('IVA 21 %')
     expect(html).not.toMatch(/\{\{/)
+  })
+})
+
+describe('renderTicketHtml', () => {
+  it('Factura B: línea con precio IVA incluido, total, transparencia, QR y CAE', () => {
+    const html = renderTicketHtml(
+      ticketTemplate,
+      facturaB({ items: [{ descripcion: 'Gaseosa', cantidad: 2, precioUnitario: 1500, iva: 21 }], importe: 3630 }),
+      'data:image/png;base64,QR',
+    )
+    expect(html).toContain('FACTURA B')
+    expect(html).toContain('2 x $ 1.815,00')
+    expect(html).toContain('$ 3.630,00')
+    expect(html).toContain('IVA contenido: $ 630,00')
+    expect(html).toContain('src="data:image/png;base64,QR"')
+    expect(html).toContain('86431024007837')
+    expect(html).not.toMatch(/\{\{/)
+  })
+
+  it('Factura A: precio neto con la alícuota en cada línea', () => {
+    const html = renderTicketHtml(
+      ticketTemplate,
+      facturaB({ cbteTipo: 1, items: [{ descripcion: 'x', cantidad: 1, precioUnitario: 200, iva: 10.5 }] }),
+      '',
+    )
+    expect(html).toContain('1 x $ 200,00 (IVA 10,5 %)')
+    expect(html).toContain('IVA 10,5 %')
   })
 })

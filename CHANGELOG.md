@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docker-compose.yml
 - GitHub Actions CI
 - `buildQrUrl` para armar la URL del QR AFIP
+- Formato ticket para impresoras térmicas (80/58 mm, alto según contenido): `ARCA_PDF_FORMATO`, `ARCA_PDF_TICKET_MM`, `ARCA_TEMPLATE_TICKET` y `generateFacturaPdf(data, fileName, { formato })`
 - Validación de Consumidor Final por monto: desde `MONTO_MAX_CONSUMIDOR_FINAL` ($10.000.000, RG 5700/2025) se rechaza DocTipo 99; configurable con `ARCA_MONTO_MAX_CF`
 
 ### Fixed

@@ -1,6 +1,6 @@
 import path from 'node:path'
 import dotenv from 'dotenv'
-import { MONTO_MAX_CONSUMIDOR_FINAL } from '../domain/constants.js'
+import { MONTO_MAX_CONSUMIDOR_FINAL, isPdfFormato, type PdfFormato } from '../domain/constants.js'
 import { isArcaEnv, type ArcaEnv, type ArcaService, DEFAULT_ARCA_SERVICE } from '../domain/env.js'
 import { ConfigError } from '../domain/errors.js'
 import type { LogLevel } from '../domain/logger.js'
@@ -47,6 +47,12 @@ export interface ArcaConfig {
   templates: {
     factura: string | null
     presupuesto: string | null
+    ticket: string | null
+  }
+  /** Formato de las facturas en PDF. */
+  pdf: {
+    formato: PdfFormato
+    anchoTicketMm: number
   }
   /**
    * Importe desde el cual se rechaza facturar a Consumidor Final sin identificar
@@ -115,6 +121,11 @@ export function loadConfig(options: {
       ? ['*']
       : (env.ARCA_CORS_ORIGINS ?? '').toString().split(',').map((s) => s.trim()).filter(Boolean)
 
+  const pdfFormato = (env.ARCA_PDF_FORMATO ?? 'a4').toString().trim().toLowerCase()
+  if (!isPdfFormato(pdfFormato)) {
+    throw new ConfigError(`ARCA_PDF_FORMATO inválido: "${pdfFormato}". Valores válidos: a4, ticket`)
+  }
+
   const config: ArcaConfig = {
     arcaEnv,
     arcaService,
@@ -148,6 +159,11 @@ export function loadConfig(options: {
     templates: {
       factura: (env.ARCA_TEMPLATE_FACTURA ?? '').toString().trim() || null,
       presupuesto: (env.ARCA_TEMPLATE_PRESUPUESTO ?? '').toString().trim() || null,
+      ticket: (env.ARCA_TEMPLATE_TICKET ?? '').toString().trim() || null,
+    },
+    pdf: {
+      formato: pdfFormato,
+      anchoTicketMm: Number(env.ARCA_PDF_TICKET_MM ?? 80),
     },
     montoMaxConsumidorFinal: Number(env.ARCA_MONTO_MAX_CF ?? MONTO_MAX_CONSUMIDOR_FINAL),
     logLevel: ((env.ARCA_LOG_LEVEL ?? 'info').toString() as LogLevel),
@@ -184,6 +200,9 @@ export interface ArcaConfigEnv {
   ARCA_PUPPETEER_MAX_USOS?: string
   ARCA_TEMPLATE_FACTURA?: string
   ARCA_TEMPLATE_PRESUPUESTO?: string
+  ARCA_TEMPLATE_TICKET?: string
+  ARCA_PDF_FORMATO?: string
+  ARCA_PDF_TICKET_MM?: string
   ARCA_MONTO_MAX_CF?: string
   ARCA_LOG_LEVEL?: string
 }

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>{{titulo}}</title>
+<style>
+  @page { margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; line-height: 1.25; color: #000; padding: 3mm 3mm 4mm; }
+  p { margin: 0; }
+  .center { text-align: center; }
+  .emisor h1 { font-size: 11pt; margin: 0 0 1mm; }
+  .sep { border: 0; border-top: 1px dashed #000; margin: 2mm 0; }
+  .tipo { font-size: 10pt; font-weight: bold; }
+  .item { margin-bottom: 1.2mm; }
+  .linea { display: flex; justify-content: space-between; gap: 2mm; }
+  .linea span:last-child { white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; }
+  .totales td { padding: 0.4mm 0; }
+  .num { text-align: right; white-space: nowrap; }
+  .totales .total td { font-weight: bold; font-size: 11pt; padding-top: 1mm; }
+  .transparencia { margin-top: 2mm; font-size: 7.5pt; }
+  .qr { display: block; width: 32mm; height: 32mm; margin: 3mm auto 2mm; }
+</style>
+</head>
+<body>
+  <div class="center emisor">
+    <h1>{{razonSocialEmisor}}</h1>
+    <p>CUIT: {{cuitEmisor}}</p>
+    <p>IIBB: {{ingresosBrutos}} · Inicio act.: {{inicioActividades}}</p>
+    <p>{{condicionIvaEmisor}}</p>
+    <p>{{domicilioEmisor}}</p>
+  </div>
+  <hr class="sep">
+  <div class="center">
+    <p class="tipo">{{tipoComprobante}} {{letra}}</p>
+    <p>Cód. {{codigo}} · P.V. {{ptoVta}} · Nro {{nro}}</p>
+    <p>Fecha: {{fecha}}</p>
+  </div>
+  <hr class="sep">
+  <p>{{docReceptor}}</p>
+  <p>{{razonSocialReceptor}}</p>
+  <p>{{condicionIvaReceptor}}</p>
+  <p>Cond. de venta: {{condicionVenta}}</p>
+  <p>{{cbtesAsoc}}</p>
+  <hr class="sep">
+  {{{items}}}
+  <hr class="sep">
+  {{{totales}}}
+  <img class="qr" src="{{qr}}" alt="QR AFIP">
+  <div class="center">
+    <p>CAE: {{cae}}</p>
+    <p>Vto. CAE: {{vtoCae}}</p>
+    <p>{{datosBancarios}}</p>
+  </div>
+</body>
+</html>

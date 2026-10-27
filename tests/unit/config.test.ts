@@ -20,6 +20,14 @@ describe('loadConfig', () => {
     expect(cfg.files.ta).toBe('TA_wsfe.xml')
     expect(cfg.http.port).toBe(3001)
     expect(cfg.montoMaxConsumidorFinal).toBe(10_000_000)
+    expect(cfg.pdf).toEqual({ formato: 'a4', anchoTicketMm: 80 })
+  })
+
+  it('ARCA_PDF_FORMATO=ticket con ancho configurable; valor inválido lanza ConfigError', () => {
+    const cfg = loadConfig({ cwd: workdir, overrides: { ARCA_PDF_FORMATO: 'TICKET', ARCA_PDF_TICKET_MM: '58' } })
+    expect(cfg.pdf).toEqual({ formato: 'ticket', anchoTicketMm: 58 })
+    resetConfigCache()
+    expect(() => loadConfig({ cwd: workdir, overrides: { ARCA_PDF_FORMATO: 'carta' } })).toThrow(/ARCA_PDF_FORMATO inválido/)
   })
 
   it('ARCA_MONTO_MAX_CF sobrescribe el límite de Consumidor Final', () => {

@@ -104,6 +104,9 @@ await arca.close()
 | `ARCA_PUPPETEER_MAX_USOS` | `100` | Reiniciar browser cada N usos |
 | `ARCA_TEMPLATE_FACTURA` | _(built-in)_ | Path a un template HTML de Factura custom |
 | `ARCA_TEMPLATE_PRESUPUESTO` | _(built-in)_ | Path a un template HTML de Presupuesto custom |
+| `ARCA_TEMPLATE_TICKET` | _(built-in)_ | Path a un template HTML de ticket custom |
+| `ARCA_PDF_FORMATO` | `a4` | Formato de las facturas: `a4` \| `ticket` (térmica) |
+| `ARCA_PDF_TICKET_MM` | `80` | Ancho del ticket en mm (80 o 58) |
 | `ARCA_MONTO_MAX_CF` | `10000000` | Importe desde el cual se rechaza Consumidor Final sin identificar (RG 5700/2025). `0` desactiva |
 | `ARCA_LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` \| `silent` |
 
@@ -113,12 +116,16 @@ Ver [.env.example](.env.example).
 
 `arca.cuit.lookup(cuit)` (y `GET /cuit/:cuit` en el server) consulta el Padrón A13 en nombre del CUIT del emisor. Usa el mismo cert, pero el servicio `ws_sr_padron_a13` tiene que estar autorizado en WSASS (homologación) o en el Administrador de Relaciones (producción). Su TA se cachea aparte, en `TA_ws_sr_padron_a13.xml` (o en `padronTaStorage`).
 
+### Formato A4 o ticket
+
+Con `ARCA_PDF_FORMATO=ticket` (o `pdf: { formato: 'ticket' }`) las facturas salen para impresora térmica: ancho `ARCA_PDF_TICKET_MM` y alto según el contenido. Para un comprobante puntual en otro formato: `arca.pdf.generateFacturaPdf(data, fileName, { formato: 'a4' })`. El presupuesto siempre es A4.
+
 ### Templates de PDF custom
 
-`ARCA_TEMPLATE_FACTURA` / `ARCA_TEMPLATE_PRESUPUESTO` (o `pdf.templateFactura` / `pdf.templatePresupuesto`) apuntan a un HTML propio. Placeholders:
+`ARCA_TEMPLATE_FACTURA` / `ARCA_TEMPLATE_TICKET` / `ARCA_TEMPLATE_PRESUPUESTO` (o `pdf.templateFactura` / `pdf.templateTicket` / `pdf.templatePresupuesto`) apuntan a un HTML propio. Placeholders:
 
 - `{{campo}}` → texto escapado: `letra`, `codigo`, `tipoComprobante`, `ptoVta`, `nro`, `fecha`, `cuitEmisor`, `razonSocialEmisor`, `domicilioEmisor`, `condicionIvaEmisor`, `ingresosBrutos`, `inicioActividades`, `docReceptor`, `razonSocialReceptor`, `domicilioReceptor`, `condicionIvaReceptor`, `condicionVenta`, `cbtesAsoc`, `datosBancarios`, `cae`, `vtoCae`, `qr` (data URL del QR AFIP), `titulo`.
-- `{{{items}}}` y `{{{totales}}}` → HTML generado (tabla de ítems y totales según la letra).
+- `{{{items}}}` y `{{{totales}}}` → HTML generado (ítems y totales según la letra; en el ticket los ítems van en líneas compactas). Factura y ticket usan los mismos `{{campo}}`.
 - Presupuesto: además `tituloDocumento` y `referenciaOrigen` (sin `cae`, `vtoCae`, `qr` ni `letra`).
 
 Sin `ARCA_PUPPETEER_EXECUTABLE_PATH`, se usa `PUPPETEER_EXECUTABLE_PATH`, un Chrome del sistema o el de `npx puppeteer browsers install chrome`.

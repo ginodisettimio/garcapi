@@ -17,6 +17,7 @@ import {
   type EmisorProvider,
 } from './domain/types.js'
 import { ArcaError, ValidationError, wrapError } from './domain/errors.js'
+import type { PdfFormato } from './domain/constants.js'
 import type { ArcaService, ArcaEnv } from './domain/env.js'
 
 /** Opciones para `createArca()`. */
@@ -50,6 +51,11 @@ export interface CreateArcaOptions {
     enabled?: boolean
     templateFactura?: string | null
     templatePresupuesto?: string | null
+    templateTicket?: string | null
+    /** Formato por defecto de las facturas: 'a4' o 'ticket'. */
+    formato?: PdfFormato
+    /** Ancho del ticket en mm (80 o 58). */
+    anchoTicketMm?: number
     executablePath?: string | null
     concurrency?: number
     maxUsos?: number
@@ -202,6 +208,9 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
       puppeteer,
       templateFactura: opts.pdf?.templateFactura ?? config.templates.factura,
       templatePresupuesto: opts.pdf?.templatePresupuesto ?? config.templates.presupuesto,
+      templateTicket: opts.pdf?.templateTicket ?? config.templates.ticket,
+      formato: opts.pdf?.formato ?? config.pdf.formato,
+      anchoTicketMm: opts.pdf?.anchoTicketMm ?? config.pdf.anchoTicketMm,
     })
     pdf = pdfService
   }
@@ -342,6 +351,8 @@ export {
   CONCEPTO,
   MONEDA,
   MONTO_MAX_CONSUMIDOR_FINAL,
+  PDF_FORMATOS,
+  isPdfFormato,
   IVA_ID_TO_PERCENT,
   IVA_PERCENT_TO_ID,
   IVA_PERCENT_ALLOWED,

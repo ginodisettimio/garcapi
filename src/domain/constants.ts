@@ -180,3 +180,12 @@ export const MONEDA_COTIZACION: Record<Moneda, number> = {
  * (RG 5700/2025: $10.000.000). ARCA lo actualiza: se sobrescribe con `ARCA_MONTO_MAX_CF`.
  */
 export const MONTO_MAX_CONSUMIDOR_FINAL = 10_000_000
+
+/** Formato de página del PDF: A4 o ticket de impresora térmica (ancho fijo, alto según contenido). */
+export type PdfFormato = 'a4' | 'ticket'
+
+export const PDF_FORMATOS: readonly PdfFormato[] = ['a4', 'ticket'] as const
+
+export function isPdfFormato(value: unknown): value is PdfFormato {
+  return (PDF_FORMATOS as readonly unknown[]).includes(value)
+}
