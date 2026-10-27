@@ -6,6 +6,8 @@ services:
     image: arca-api-tordini:latest
     container_name: arca-api
     restart: unless-stopped
+    # El server espera hasta 25 s las emisiones en curso antes de cerrar
+    stop_grace_period: 30s
     ports:
       # Solo localhost: exponer por HTTPS a través de un reverse proxy (ver README → Deploy)
       - "127.0.0.1:3001:3001"

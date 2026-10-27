@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # ─── Stage 1: build ──────────────────────────────────────────
-FROM node:20-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 
 # Evitar que puppeteer baje Chromium durante npm install (lo instalamos aparte en runtime)
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
@@ -27,7 +27,7 @@ COPY . .
 RUN npm run build
 
 # ─── Stage 2: runtime ────────────────────────────────────────
-FROM node:20-bookworm-slim AS runtime
+FROM node:24-bookworm-slim AS runtime
 
 LABEL org.opencontainers.image.title="arca-api-tordini" \
       org.opencontainers.image.description="Cliente ARCA/AFIP para facturacion electronica (WSAA + WSFEv1)" \
