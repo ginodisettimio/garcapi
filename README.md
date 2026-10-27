@@ -80,6 +80,8 @@ await arca.close()
 
 ---
 
+> 📘 **Consumir la API HTTP** (endpoints, requests, respuestas, errores): [docs/API.md](docs/API.md).
+
 ## 🔧 Configuración (env vars)
 
 | Variable | Default | Descripción |
@@ -299,7 +301,7 @@ docker compose up -d --build
 ```
 
 - **Chrome adentro**: la imagen instala `google-chrome-stable` (solo amd64) y lo usa vía `PUPPETEER_EXECUTABLE_PATH`.
-- **Certs en solo lectura**: `./certs` se monta `:ro` y el TA se cachea en el volumen `arca-ta` (`ARCA_TA_DIR=/app/ta`), así sobrevive a reinicios. El contenedor corre como UID/GID `10001`: dale lectura con `sudo chgrp -R 10001 certs && chmod -R g+rX certs`.
+- **Certs en solo lectura**: `./certs` se monta `:ro` y el TA se cachea en el volumen `arca-ta` (`ARCA_TA_DIR=/app/ta`), así sobrevive a reinicios. El contenedor corre como UID/GID `10001`: dale lectura sin cambiar el dueño de los archivos con `setfacl -R -m u:10001:rX certs` (o `sudo chgrp -R 10001 certs && chmod -R g+rX certs`).
 - **HTTPS**: el compose publica el puerto solo en `127.0.0.1`; poné delante un reverse proxy con TLS. Por ejemplo, con Caddy:
   ```
   facturacion.example.com {
