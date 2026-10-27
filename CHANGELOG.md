@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Contingencia: un comprobante CAEA ya informado a ARCA (corte entre la respuesta y el guardado) quedaba trabado como rechazado; ahora se verifica con `FECompConsultar`. Tampoco se puede emitir con CAE en el punto de venta de contingencia
 - La ruta de comprobantes caía a "sin autenticación" si no recibía el middleware; los PDFs se renderizan con JavaScript deshabilitado; sin `X-Powered-By` y con `X-Content-Type-Options: nosniff`
 - `.gitignore`: `ta/` y `certs/**/*.json` (TA y estado CAEA)
+- Un body con JSON mal formado o de más de 1 MB respondía 500: ahora 400 `INVALID_JSON` / 413 `PAYLOAD_TOO_LARGE`
 - Dependencias con vulnerabilidades conocidas actualizadas (`npm audit`: de 19 a 1, la de zod, mitigada con los topes de arrays)
 - Condición IVA del receptor según la tabla de ARCA (`FEParamGetCondicionIvaReceptor`): la Factura C se rechazaba para responsables inscriptos y monotributistas (1, 6, 13, 16) y faltaba la condición 16 (Monotributo Trabajador Independiente Promovido) en A. El mensaje `condicion_iva_invalida_para_BC` pasa a `condicion_iva_invalida_para_B` / `condicion_iva_invalida_para_C`
 - `docNro` no numérico pasaba la validación como `NaN`; `ptoVta` 0 se aceptaba; la regla de `docNro` 0 para consumidor final ahora aplica también a las notas B

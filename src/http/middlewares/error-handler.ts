@@ -78,6 +78,18 @@ export function createErrorHandlerMiddleware(opts: { logger?: Logger } = {}) {
       })
       return
     }
+    // Errores del parser del body (express.json): JSON inválido, body demasiado grande, etc.
+    const httpErr = err as { status?: unknown; expose?: unknown; type?: unknown }
+    if (httpErr.expose === true && typeof httpErr.status === 'number' && httpErr.status >= 400 && httpErr.status < 500) {
+      const [code, error] =
+        httpErr.type === 'entity.parse.failed'
+          ? ['INVALID_JSON', 'El body no es JSON válido']
+          : httpErr.type === 'entity.too.large'
+            ? ['PAYLOAD_TOO_LARGE', 'El body es demasiado grande']
+            : ['BAD_REQUEST', 'Request inválido']
+      res.status(httpErr.status).json({ ok: false, error, code })
+      return
+    }
     // Error desconocido
     const e = err as Error
     opts.logger?.error(

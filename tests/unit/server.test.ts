@@ -80,6 +80,19 @@ describe('createArcaServer: CORS y auth', () => {
     expect(res.headers['x-content-type-options']).toBe('nosniff')
   })
 
+  it('JSON mal formado → 400 INVALID_JSON; body de más de 1 MB → 413 PAYLOAD_TOO_LARGE', async () => {
+    const app = makeApp(['*'])
+    const roto = await request(app).post('/afip/facturas').set('Content-Type', 'application/json').send('{"ptoVta": 1,')
+    expect(roto.status).toBe(400)
+    expect(roto.body).toEqual({ ok: false, error: 'El body no es JSON válido', code: 'INVALID_JSON' })
+    const grande = await request(app)
+      .post('/afip/facturas')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ x: 'a'.repeat(1_100_000) }))
+    expect(grande.status).toBe(413)
+    expect(grande.body.code).toBe('PAYLOAD_TOO_LARGE')
+  })
+
   it('400 de validación del body trae code VALIDATION_ERROR', async () => {
     const res = await request(makeApp(['*'])).post('/afip/facturas').send({ ptoVta: 'x' })
     expect(res.status).toBe(400)

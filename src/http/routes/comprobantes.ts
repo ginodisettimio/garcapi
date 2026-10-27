@@ -32,7 +32,7 @@ export function createComprobantesRoutes(deps: ComprobantesRoutesDeps) {
       if (!isCbteTipo(tipo)) {
         throw new ValidationError(`tipo de comprobante inválido: ${tipo}`)
       }
-      const last = await deps.comprobantes.ultimoAutorizado(ptoVta, tipo as never)
+      const last = await deps.comprobantes.ultimoAutorizado(ptoVta, tipo)
       res.json({ ok: true, ptoVta, tipo, nro: last })
     } catch (err) {
       next(err)
@@ -53,7 +53,7 @@ export function createComprobantesRoutes(deps: ComprobantesRoutesDeps) {
         if (!isCbteTipo(tipo)) {
           throw new ValidationError(`tipo de comprobante inválido: ${tipo}`)
         }
-        const xml = await deps.comprobantes.consultar(ptoVta, tipo as never, nro)
+        const xml = await deps.comprobantes.consultar(ptoVta, tipo, nro)
         // Devolvemos el XML parseado si el cliente lo pide
         if (req.query.format === 'raw') {
           res.type('application/xml').send(xml)

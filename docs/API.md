@@ -71,6 +71,8 @@ Todas las respuestas de error tienen `ok: false`, un mensaje en `error` y, salvo
 | HTTP | `code` | Cuándo | Campos extra |
 |---|---|---|---|
 | 400 | `VALIDATION_ERROR` | El body no cumple el schema (tipos, campos obligatorios, reglas de ARCA), el consumidor final por monto o parámetros de URL inválidos | `issues` |
+| 400 | `INVALID_JSON` | El body no es JSON válido | — |
+| 413 | `PAYLOAD_TOO_LARGE` | El body supera 1 MB | — |
 | 401 | — | Falta el JWT o es inválido | — |
 | 404 | `CUIT_NO_ENCONTRADO` | El CUIT no existe en el Padrón A13 | `details` |
 | 502 | `COMPROBANTE_RECHAZADO` | ARCA respondió y rechazó el comprobante | `afipErrors`, `afipObservations` |
