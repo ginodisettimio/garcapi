@@ -50,6 +50,16 @@ const arca = createArca({
   datosBancarios: process.env.ARCA_DATOS_BANCARIOS,
 })
 
+if (arca.config.arcaEnv === 'produccion') {
+  if (!arca.config.http.jwt.secret) {
+    console.error('Error: en producción ARCA_JWT_SECRET es obligatorio (sin él cualquiera que llegue al puerto puede emitir comprobantes).')
+    process.exit(1)
+  }
+  if (arca.config.http.corsOrigins.includes('*')) {
+    console.warn('Aviso: ARCA_CORS_ORIGINS="*" en producción. Limitalo al origen del POS.')
+  }
+}
+
 const result = listenArcaServer({
   config: arca.config,
   logger: new ConsoleLogger(arca.config.logLevel),
