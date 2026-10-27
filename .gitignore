@@ -30,7 +30,7 @@ Thumbs.db
 # Build
 *.tsbuildinfo
 
-# Certificados y datos sensibles — NUNCA versionar
+# Certs
 certs/**/*.crt
 certs/**/*.key
 certs/**/*.csr
@@ -53,9 +53,6 @@ desktop.ini
 # Test artifacts
 test-results/
 playwright-report/
-
-# Herramientas locales
-.impeccable/
 
 # TA y estado CAEA (ARCA_TA_DIR dentro del repo, o caea.json junto a los certs)
 ta/
