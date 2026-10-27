@@ -48,7 +48,6 @@ export class BillingService {
    *  8. Devuelve el resultado.
    */
   async emitir(input: EmitirComprobanteRequest | unknown): Promise<ComprobanteEmitido> {
-    // 1) Validación
     const parsed = EmitirComprobanteRequestSchema.safeParse(input)
     if (!parsed.success) {
       throw new ValidationError(
@@ -60,11 +59,9 @@ export class BillingService {
     const cbteTipo = req.cbteTipo as CbteTipo
     const fecha = req.fecha ?? todayYmd()
 
-    // 2) y 3) Emisor + TA
     const emisor = await this.deps.emisor.getEmisor()
     const { auth } = await this.deps.wsaa.authenticate(emisor.cuit)
 
-    // 4) y 5) Número + FECAESolicitar, serializados
     const { nro, xml } = await this.queue.add(async () => {
       const nro = await this.deps.wsfe.getNextNumber(auth, req.ptoVta, cbteTipo)
       const xml = await this.deps.wsfe.fecaeSolicitar(auth, {
@@ -88,7 +85,6 @@ export class BillingService {
       return { nro, xml }
     })
 
-    // 6) Resultado
     const resultado = tag(xml, 'Resultado')
     const cae = tag(xml, 'CAE') ?? ''
     const vtoCae = tag(xml, 'CAEFchVto') ?? ''
@@ -120,7 +116,7 @@ export class BillingService {
       xml,
     }
 
-    // 7) PDF: el CAE ya está asignado, un fallo acá no puede perder el resultado
+    // El CAE ya está asignado: un fallo del PDF no puede perder el resultado
     if (this.deps.pdf) {
       try {
         result.pdfBuffer = await this.deps.pdf.generateFacturaPdf(
@@ -160,7 +156,6 @@ export class BillingService {
       }
     }
 
-    // 8)
     return result
   }
 }

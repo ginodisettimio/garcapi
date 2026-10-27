@@ -20,7 +20,7 @@ class FakeSigner implements CmsSigner {
   }
 }
 
-class FakeSoap implements SoapClient {
+class FakeSoapClient implements SoapClient {
   public calls: SoapPostArgs[] = []
   constructor(private readonly response: string) {}
   async post(args: SoapPostArgs): Promise<string> {
@@ -46,7 +46,7 @@ function makeClient(soap: SoapClient, storage = new MemoryTaStorage()) {
 
 describe('WsaaClient', () => {
   it('buildTra incluye servicio y ventana de tiempo', () => {
-    const c = makeClient(new FakeSoap(''))
+    const c = makeClient(new FakeSoapClient(''))
     const tra = c.buildTra('wsfe', new Date('2024-01-05T12:00:00Z'))
     expect(tra).toContain('<service>wsfe</service>')
     expect(tra).toContain('<uniqueId>1704456000</uniqueId>')
@@ -57,7 +57,7 @@ describe('WsaaClient', () => {
   it('usa el TA cacheado si está vigente', async () => {
     const storage = new MemoryTaStorage()
     await storage.write('homologacion', taXml('cached', inOneHour()))
-    const soap = new FakeSoap(loginResponse(taXml('nuevo', inOneHour())))
+    const soap = new FakeSoapClient(loginResponse(taXml('nuevo', inOneHour())))
     const ta = await makeClient(soap, storage).getCachedTA()
     expect(ta.token).toBe('cached')
     expect(ta.valid).toBe(true)
@@ -67,7 +67,7 @@ describe('WsaaClient', () => {
   it('renueva y persiste si el TA está vencido', async () => {
     const storage = new MemoryTaStorage()
     await storage.write('homologacion', taXml('viejo', new Date(Date.now() - 1000)))
-    const soap = new FakeSoap(loginResponse(taXml('nuevo', inOneHour())))
+    const soap = new FakeSoapClient(loginResponse(taXml('nuevo', inOneHour())))
     const ta = await makeClient(soap, storage).getCachedTA()
     expect(ta.token).toBe('nuevo')
     expect(soap.calls).toHaveLength(1)
@@ -76,7 +76,7 @@ describe('WsaaClient', () => {
   })
 
   it('dos getCachedTA concurrentes hacen un solo login', async () => {
-    const soap = new FakeSoap(loginResponse(taXml('nuevo', inOneHour())))
+    const soap = new FakeSoapClient(loginResponse(taXml('nuevo', inOneHour())))
     const c = makeClient(soap)
     const [a, b] = await Promise.all([c.getCachedTA(), c.getCachedTA()])
     expect(a.token).toBe('nuevo')
@@ -86,13 +86,13 @@ describe('WsaaClient', () => {
 
   it('SOAP fault → WsaaError', async () => {
     const fault = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><soapenv:Fault><faultcode>ns1:coe.alreadyAuthenticated</faultcode><faultstring>El CEE ya posee un TA valido para el acceso al WSN solicitado</faultstring></soapenv:Fault></soapenv:Body></soapenv:Envelope>`
-    const c = makeClient(new FakeSoap(fault))
+    const c = makeClient(new FakeSoapClient(fault))
     await expect(c.getCachedTA()).rejects.toBeInstanceOf(WsaaError)
     await expect(c.getCachedTA()).rejects.toMatchObject({ code: 'WSAA_FAULT' })
   })
 
   it('authenticate devuelve ArcaAuth con cuit string', async () => {
-    const c = makeClient(new FakeSoap(loginResponse(taXml('t', inOneHour()))))
+    const c = makeClient(new FakeSoapClient(loginResponse(taXml('t', inOneHour()))))
     const { auth } = await c.authenticate(20223565078)
     expect(auth).toEqual({ token: 't', sign: 'sig-t', cuit: '20223565078' })
   })

@@ -16,7 +16,7 @@ const CAE_OK = `<FECAESolicitarResult><FeCabResp><Cuit>20223565078</Cuit><PtoVta
 const CAE_RECHAZADO = `<FECAESolicitarResult><FeCabResp><Resultado>R</Resultado></FeCabResp><FeDetResp><FECAEDetResponse><Resultado>R</Resultado><Observaciones><Obs><Code>10016</Code><Msg>El numero o fecha del comprobante no se corresponde con el proximo a autorizar</Msg></Obs></Observaciones><CAE></CAE></FECAEDetResponse></FeDetResp></FECAESolicitarResult>`
 
 /** Responde según la operación: último autorizado = 41, FECAESolicitar = `caeResponse`. */
-class FakeWsfeSoap implements SoapClient {
+class FakeSoapClient implements SoapClient {
   public calls: SoapPostArgs[] = []
   constructor(private readonly caeResponse: string) {}
   async post(args: SoapPostArgs): Promise<string> {
@@ -27,7 +27,7 @@ class FakeWsfeSoap implements SoapClient {
 }
 
 async function makeService(caeResponse: string, pdf?: PdfGenerator) {
-  const soap = new FakeWsfeSoap(caeResponse)
+  const soap = new FakeSoapClient(caeResponse)
   const storage = new MemoryTaStorage()
   await storage.write('homologacion', TA)
   const wsaa = new WsaaClient({
