@@ -105,6 +105,13 @@ export class ComprobanteRechazadoError extends WsfeError {
   }
 }
 
+/** Errores del Padrón A13 (consulta de CUIT). */
+export class PadronError extends ArcaError {
+  constructor(message: string, code = 'PADRON_ERROR', details?: Record<string, unknown>) {
+    super(message, code, details)
+  }
+}
+
 /** Errores de validación de input. */
 export class ValidationError extends ArcaError {
   public readonly issues?: { path: (string | number)[]; message: string }[]

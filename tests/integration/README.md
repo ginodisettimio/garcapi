@@ -18,4 +18,12 @@ Se saltea solo si `ARCA_CUIT` no está definido. Para ejecutarlo:
 ARCA_CUIT=<tu cuit> npm run test:integration
 ```
 
+`padron.test.ts` (Padrón A13) es opt-in: necesita que el cert esté autorizado
+también para el servicio `ws_sr_padron_a13` en WSASS.
+
+```bash
+ARCA_CUIT=<tu cuit> ARCA_PADRON_A13=1 npm run test:integration
+# Opcional: ARCA_PADRON_CUIT=<cuit a consultar> (default ARCA_CUIT)
+```
+
 Ver `docs/AMBIENTES.md` para más detalles sobre certs y entornos.

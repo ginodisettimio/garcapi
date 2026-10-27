@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `createArca()` factory con inyección de dependencias
 - `BillingService` para emitir comprobantes (Factura A/B/C, NC, ND)
 - `ComprobantesService` para consultar último y por número
-- `CuitService` placeholder (extensible)
+- `CuitService` sobre el Padrón A13 (`PadronA13CuitService`, `PadronA13Client`); `GET /cuit/:cuit` devuelve 404 si el CUIT no existe
 - `WsaaClient` con cache de TA y auto-renovación
 - `WsfeClient` con FECAESolicitar, FECompUltimoAutorizado, FECompConsultar
 - `CmsSigner` con default OpenSSL

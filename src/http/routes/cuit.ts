@@ -10,8 +10,7 @@ export interface CuitRoutesDeps {
 
 /**
  * Crea las rutas de consulta de CUIT.
- * GET /cuit/:cuit — placeholder. La implementación real requiere
- * Padrón A13 (no incluido en este módulo).
+ * GET /cuit/:cuit — consulta el Padrón A13 (404 si el CUIT no existe).
  */
 export function createCuitRoutes(deps: CuitRoutesDeps) {
   const r = Router()

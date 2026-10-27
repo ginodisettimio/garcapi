@@ -16,7 +16,8 @@ export function isArcaEnv(value: unknown): value is ArcaEnv {
  * - 'wsfe': Web Service de Factura Electrónica (FACTURA A/B/C, NC, ND)
  * - 'wsmtxca': Web Service de Tique (no usado actualmente)
  * - 'wsfev1': alias de 'wsfe' (algunos lo usan así)
+ * - 'ws_sr_padron_a13': Padrón A13 (consulta de datos por CUIT)
  */
-export type ArcaService = 'wsfe' | 'wsfev1' | 'wsmtxca'
+export type ArcaService = 'wsfe' | 'wsfev1' | 'wsmtxca' | 'ws_sr_padron_a13'
 
 export const DEFAULT_ARCA_SERVICE: ArcaService = 'wsfe'

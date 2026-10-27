@@ -108,6 +108,10 @@ await arca.close()
 
 Ver [.env.example](.env.example).
 
+### Padrón A13 (consulta de CUIT)
+
+`arca.cuit.lookup(cuit)` (y `GET /cuit/:cuit` en el server) consulta el Padrón A13 en nombre del CUIT del emisor. Usa el mismo cert, pero el servicio `ws_sr_padron_a13` tiene que estar autorizado en WSASS (homologación) o en el Administrador de Relaciones (producción). Su TA se cachea aparte, en `TA_ws_sr_padron_a13.xml` (o en `padronTaStorage`).
+
 ### Templates de PDF custom
 
 `ARCA_TEMPLATE_FACTURA` / `ARCA_TEMPLATE_PRESUPUESTO` (o `pdf.templateFactura` / `pdf.templatePresupuesto`) apuntan a un HTML propio. Placeholders:
@@ -292,5 +296,5 @@ MIT © Tordini. Ver [LICENSE](LICENSE).
 | `BillingService.emitir()` y `ComprobantesService` | ✅ |
 | Tests unitarios + E2E contra homologación | ✅ |
 | `PdfService` + `PuppeteerManager` (PDFs con QR AFIP) y templates | ✅ |
-| `CuitService` (Padrón A13) | 🚧 pendiente |
+| `CuitService` (Padrón A13) | ✅ |
 | Scripts CLI (salvo `server.ts`) | 🚧 pendiente |

@@ -8,20 +8,25 @@ export const ARCA_URLS = {
   homologacion: {
     wsaa: 'https://wsaahomo.afip.gov.ar/ws/services/LoginCms',
     wsfe: 'https://wswhomo.afip.gov.ar/wsfev1/service.asmx',
+    padronA13: 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA13',
     qr: 'https://www.afip.gob.ar/fe/qr/',
   },
   produccion: {
     wsaa: 'https://wsaa.afip.gov.ar/ws/services/LoginCms',
     wsfe: 'https://servicios1.afip.gov.ar/wsfev1/service.asmx',
+    padronA13: 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA13',
     qr: 'https://www.afip.gob.ar/fe/qr/',
   },
-} as const satisfies Record<ArcaEnv, { wsaa: string; wsfe: string; qr: string }>
+} as const satisfies Record<ArcaEnv, { wsaa: string; wsfe: string; padronA13: string; qr: string }>
 
 /**
  * SOAPAction namespace para WSFEv1. Todas las operaciones de WSFEv1
  * cuelgan de este namespace + nombre de operación.
  */
 export const WSFE_SOAP_NS = 'http://ar.gov.afip.dif.FEV1/'
+
+/** Namespace del servicio Padrón A13 (`ws_sr_padron_a13`). */
+export const PADRON_A13_SOAP_NS = 'http://a13.soap.ws.server.puc.sr/'
 
 /**
  * Tipos de comprobante según RG-4291.

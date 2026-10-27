@@ -6,9 +6,10 @@ import { OpenSslCmsSigner, type CmsSigner } from './core/cms-signer.js'
 import { AxiosSoapClient, type SoapClient } from './core/soap-client.js'
 import { WsaaClient } from './core/wsaa.js'
 import { WsfeClient } from './core/wsfe.js'
+import { PadronA13Client } from './core/padron-a13.js'
 import { BillingService } from './services/billing-service.js'
 import { ComprobantesService } from './services/comprobantes-service.js'
-import { type CuitService, NotImplementedCuitService } from './services/cuit-service.js'
+import { type CuitService, PadronA13CuitService } from './services/cuit-service.js'
 import { PuppeteerManager } from './pdf/puppeteer-manager.js'
 import { PdfService, type PdfGenerator } from './pdf/pdf-service.js'
 import {
@@ -63,6 +64,12 @@ export interface CreateArcaOptions {
    * Útil para tests (MemoryTaStorage) o deployments distribuidos.
    */
   taStorage?: TaStorage
+  /**
+   * Storage del TA del Padrón A13 (servicio `ws_sr_padron_a13`). Default:
+   * archivo `TA_ws_sr_padron_a13.xml` en disco. No puede ser el mismo
+   * storage que `taStorage`: cada servicio tiene su propio TA.
+   */
+  padronTaStorage?: TaStorage
   /** CMS signer custom (default: OpenSslCmsSigner). */
   cmsSigner?: CmsSigner
   /** SOAP client custom. */
@@ -202,7 +209,19 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
   // 11) Services
   const billing = new BillingService({ emisor, wsaa, wsfe, logger, pdf: pdf ?? undefined })
   const comprobantes = new ComprobantesService({ emisor, wsaa, wsfe, logger })
-  const cuit: CuitService = opts.cuitService ?? new NotImplementedCuitService()
+  const padronWsaa = new WsaaClient({
+    arcaEnv,
+    arcaService: 'ws_sr_padron_a13',
+    storage: opts.padronTaStorage ?? new FileTaStorage(opts.certsDir ?? config.certsDir, 'TA_ws_sr_padron_a13.xml'),
+    signer,
+    soap,
+    certPath,
+    keyPath,
+    logger,
+  })
+  const cuit: CuitService =
+    opts.cuitService ??
+    new PadronA13CuitService({ emisor, wsaa: padronWsaa, padron: new PadronA13Client(soap, arcaEnv), logger })
 
   return {
     config,
@@ -240,7 +259,7 @@ export type {
 } from './domain/index.js'
 
 // Core
-export { WsaaClient, WsfeClient } from './core/index.js'
+export { WsaaClient, WsfeClient, PadronA13Client } from './core/index.js'
 export type { CmsSigner, SoapClient, TaStorage } from './core/index.js'
 export {
   FileTaStorage,
@@ -251,10 +270,13 @@ export {
 } from './core/index.js'
 
 // Services
-export { BillingService, ComprobantesService } from './services/index.js'
+export { BillingService, ComprobantesService, PadronA13CuitService, NotImplementedCuitService } from './services/index.js'
 export type {
   BillingServiceDeps,
   ComprobantesServiceDeps,
+  CuitService,
+  CuitInfo,
+  PadronA13CuitServiceDeps,
 } from './services/index.js'
 
 // PDF
@@ -290,6 +312,7 @@ export {
   ValidationError,
   ConfigError,
   PdfError,
+  PadronError,
   FileSystemError,
   NetworkError,
   wrapError,
@@ -299,6 +322,7 @@ export type { AfipError } from './domain/errors.js'
 // Constants & helpers
 export {
   ARCA_URLS,
+  PADRON_A13_SOAP_NS,
   CBTE_TIPO,
   CBTE_TIPOS,
   CBTE_TIPO_NOMBRES,

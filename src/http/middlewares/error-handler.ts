@@ -46,11 +46,13 @@ export function createErrorHandlerMiddleware(opts: { logger?: Logger } = {}) {
       const status =
         err.code === 'TA_INVALIDO'
           ? 401
-          : err.code === 'CONFIG_ERROR'
-            ? 500
-            : err.code === 'OPENSSL_NOT_FOUND'
+          : err.code === 'CUIT_NO_ENCONTRADO'
+            ? 404
+            : err.code === 'CONFIG_ERROR'
               ? 500
-              : 500
+              : err.code === 'OPENSSL_NOT_FOUND'
+                ? 500
+                : 500
       res.status(status).json({
         ok: false,
         error: err.message,
