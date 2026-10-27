@@ -87,6 +87,7 @@ await arca.close()
 | `ARCA_ENV` | `homologacion` | `homologacion` \| `produccion` |
 | `ARCA_SERVICE` | `wsfe` | Servicio WSAA para facturación (`wsfe`) |
 | `CERTS_DIR` | `./certs` | Carpeta raíz de certs |
+| `ARCA_TA_DIR` | _(= `CERTS_DIR`)_ | Carpeta donde se cachea el TA (permite montar los certs en solo lectura) |
 | `ARCA_CERT_FILE` | `cert.crt` | Nombre del archivo .crt |
 | `ARCA_KEY_FILE` | `private.key` | Nombre del archivo .key |
 | `ARCA_TA_FILE` | `TA_wsfe.xml` | Nombre del archivo TA cacheado |
@@ -254,17 +255,46 @@ Compilados, quedan como `arca-tra`, `arca-sign-cms`, `arca-submit-login`, `arca-
 
 ---
 
-## 🐳 Docker
+## 🏭 Producción
+
+Pasos en ARCA (con clave fiscal del CUIT emisor):
+
+1. **Certificado de producción**: generá la clave y el CSR y subilo en *Administración de Certificados Digitales*.
+   ```bash
+   openssl genrsa -out certs/produccion/private.key 2048
+   openssl req -new -key certs/produccion/private.key -subj "/C=AR/O=<razon social>/CN=<alias>/serialNumber=CUIT <cuit>" -out certs/produccion/pedido.csr
+   ```
+   Guardá el certificado descargado como `certs/produccion/cert.crt`.
+2. **Relación con el servicio**: en *Administrador de Relaciones de Clave Fiscal* → *Nueva relación*, asociá el certificado (computador fiscal) al servicio **Facturación Electrónica** (`wsfe`). Si usás la consulta de CUIT, también a `ws_sr_padron_a13`.
+3. **Punto de venta**: en *Administración de puntos de venta y domicilios*, creá uno con sistema **"RECE para aplicativo y web services"**. Los de factura en línea no sirven para web services.
+4. **Configuración**: `ARCA_ENV=produccion`, `ARCA_PTO_VTA_DEFAULT=<nuevo punto de venta>`.
+5. **Verificación sin emitir**: `tsx src/bin/pipeline.ts -e produccion -p <ptoVta>` (FEDummy → TA → puntos de venta → último autorizado).
+
+Los comprobantes de producción tienen validez fiscal: probá primero todo el flujo en homologación.
+
+## 🐳 Deploy
 
 ```bash
-docker build -t arca-api-tordini .
-docker run -p 3001:3001 \
-  -v $(pwd)/certs:/app/certs \
-  -e ARCA_ENV=produccion \
-  arca-api-tordini
+cp .env.example .env   # completar emisor, ARCA_JWT_SECRET y ARCA_CORS_ORIGINS
+docker compose up -d --build
 ```
 
-Ver [Dockerfile](Dockerfile).
+- **Chrome adentro**: la imagen instala `google-chrome-stable` (solo amd64) y lo usa vía `PUPPETEER_EXECUTABLE_PATH`.
+- **Certs en solo lectura**: `./certs` se monta `:ro` y el TA se cachea en el volumen `arca-ta` (`ARCA_TA_DIR=/app/ta`), así sobrevive a reinicios. El contenedor corre como UID/GID `10001`: dale lectura con `sudo chgrp -R 10001 certs && chmod -R g+rX certs`.
+- **HTTPS**: el compose publica el puerto solo en `127.0.0.1`; poné delante un reverse proxy con TLS. Por ejemplo, con Caddy:
+  ```
+  facturacion.example.com {
+    reverse_proxy 127.0.0.1:3001
+  }
+  ```
+- **Auth**: en producción el server no arranca sin `ARCA_JWT_SECRET`. No hay endpoint de login: el backend del POS firma un JWT HS256 con ese secreto y lo manda como `Authorization: Bearer <token>`:
+  ```ts
+  jwt.sign({ sub: 'pos-1' }, process.env.ARCA_JWT_SECRET, { expiresIn: '12h' })
+  ```
+- **CORS**: `ARCA_CORS_ORIGINS` con el origen exacto del POS (ej. `https://pos.example.com`), nunca `*`.
+- **Una sola réplica**: las emisiones se serializan dentro del proceso para no pedir dos veces el mismo número. Con varias réplicas emitiendo en el mismo punto de venta hace falta un lock distribuido (no incluido), o un punto de venta por réplica.
+
+Sin compose: `docker build -t garcapi . && docker run --env-file .env -p 127.0.0.1:3001:3001 -v $(pwd)/certs:/app/certs:ro -v arca-ta:/app/ta garcapi`.
 
 ---
 
