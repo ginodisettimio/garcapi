@@ -85,18 +85,23 @@ await arca.close()
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `ARCA_ENV` | `homologacion` | `homologacion` \| `produccion` |
-| `ARCA_SERVICE` | `wsfe` | `wsfe` (por ahora solo este) |
+| `ARCA_SERVICE` | `wsfe` | Servicio WSAA para facturación (`wsfe`) |
 | `CERTS_DIR` | `./certs` | Carpeta raíz de certs |
-| `ARCA_FILE_CERT` | `cert.crt` | Nombre del archivo .crt |
-| `ARCA_FILE_KEY` | `private.key` | Nombre del archivo .key |
-| `ARCA_FILE_TA` | `TA_wsfe.xml` | Nombre del archivo TA cacheado |
+| `ARCA_CERT_FILE` | `cert.crt` | Nombre del archivo .crt |
+| `ARCA_KEY_FILE` | `private.key` | Nombre del archivo .key |
+| `ARCA_TA_FILE` | `TA_wsfe.xml` | Nombre del archivo TA cacheado |
+| `ARCA_TRA_FILE` | `tra.xml` | Nombre del archivo TRA (scripts CLI) |
+| `ARCA_CMS_FILE` | `cms.der` | Nombre del archivo CMS firmado (scripts CLI) |
 | `ARCA_HTTP_HOST` | `0.0.0.0` | Host del server standalone |
 | `ARCA_HTTP_PORT` | `3001` | Puerto del server standalone |
-| `ARCA_HTTP_CORS_ORIGINS` | _(vacío)_ | Lista separada por comas. `*` para todos |
+| `ARCA_CORS_ORIGINS` | `*` | Lista separada por comas. `*` para todos |
+| `ARCA_RATE_LIMIT_WINDOW_MS` | `60000` | Ventana del rate limit HTTP (ms) |
+| `ARCA_RATE_LIMIT_MAX` | `100` | Requests por ventana |
 | `ARCA_JWT_SECRET` | _(vacío)_ | Si se setea, las rutas HTTP piden Bearer token |
+| `ARCA_JWT_EXPIRES_IN` | `12h` | Vencimiento de los JWT emitidos |
 | `ARCA_PUPPETEER_EXECUTABLE_PATH` | _(auto)_ | Ruta al binario de Chrome/Chromium |
-| `ARCA_PUPPETEER_CONCURRENCY` | `1` | Browsers simultáneos |
-| `ARCA_PUPPETEER_MAX_USOS` | `1000` | Reiniciar browser cada N usos |
+| `ARCA_PUPPETEER_CONCURRENCY` | `2` | PDFs renderizados en simultáneo |
+| `ARCA_PUPPETEER_MAX_USOS` | `100` | Reiniciar browser cada N usos |
 | `ARCA_TEMPLATE_FACTURA` | _(built-in)_ | Path a un template HTML de Factura custom |
 | `ARCA_TEMPLATE_PRESUPUESTO` | _(built-in)_ | Path a un template HTML de Presupuesto custom |
 | `ARCA_LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` \| `silent` |
