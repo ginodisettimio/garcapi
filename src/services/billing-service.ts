@@ -165,5 +165,5 @@ export class BillingService {
   }
 }
 
-// Re-exports de tipos para que las firmas de la versión pública sean completas
+// Re-exports de tipos usados en las firmas del servicio
 export type { CbteTipo, Emisor, EmisorProvider }

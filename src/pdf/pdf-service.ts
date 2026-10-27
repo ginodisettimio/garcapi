@@ -1,12 +1,11 @@
 /**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
+ * Pendiente de implementación.
  */
 import type { ComprobanteAsociado, Item } from '../domain/index.js'
 import type { CbteTipo } from '../domain/index.js'
 import type { PuppeteerManager } from './puppeteer-manager.js'
 
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
+const PLACEHOLDER = 'No implementado todavía'
 
 export interface FacturaPdfData {
   ptoVta: number

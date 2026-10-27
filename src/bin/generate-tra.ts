@@ -1,19 +1,18 @@
 #!/usr/bin/env node
 /**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
+ * Pendiente de implementación.
  */
 
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
+const PLACEHOLDER = 'No implementado todavía'
 
 console.log('='.repeat(70))
-console.log(' generate-tra.ts — Versión pública')
+console.log(' generate-tra.ts — no implementado')
 console.log('='.repeat(70))
 console.log('')
 console.log(PLACEHOLDER)
 console.log('')
 console.log('El script original genera el archivo TRA (Ticket Request Access)')
-console.log('y lo guarda en certs/<env>/tra.xml. La versión completa incluye:')
+console.log('y lo guarda en certs/<env>/tra.xml. Scripts pendientes:')
 console.log('  - generate-tra.ts   (TRA)')
 console.log('  - sign-cms.ts       (firma CMS con OpenSSL)')
 console.log('  - submit-login.ts   (loginCms → TA)')

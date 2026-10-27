@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createArca } from '../../src/index.js'
 
-// Versión pública: la factory devuelve stubs. Tests completos en la versión pro.
+// Skip: el último caso requiere PdfService/PuppeteerManager, pendientes de implementación.
 describe.skip('createArca factory', () => {
   it('construye todas las dependencias con defaults', () => {
     const arca = createArca({

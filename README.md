@@ -129,7 +129,7 @@ Arca-api-Tordini/
 
 ## 🏗️ Arquitectura
 
-El detalle completo (diagramas, decisiones de diseño, ciclo de vida del TA) está en la documentación de la versión completa. Acá va el resumen:
+El detalle completo (diagramas, decisiones de diseño, ciclo de vida del TA) no está documentado todavía. Acá va el resumen:
 
 ```
 ┌────────────────────────────────────────────────────────┐
@@ -232,7 +232,7 @@ docker run -p 3001:3001 \
   arca-api-tordini
 ```
 
-Ver [Dockerfile](Dockerfile). La guía completa de deploy a producción (env vars, checklist, troubleshooting) está en la documentación de la versión completa.
+Ver [Dockerfile](Dockerfile).
 
 ---
 
@@ -266,45 +266,16 @@ MIT © Tordini. Ver [LICENSE](LICENSE).
 
 ---
 
-## 💎 Versión completa
+## 🚧 Estado
 
-La lógica de negocio (WSAA, WSFEv1, `BillingService`, generación de PDF, scripts CLI, tests E2E) está en la **versión completa**, que se compra por **70.000 ARS (≈ USD 49)** vía Mercado Pago.
-
-> Esta versión (la pública) expone el **contrato público completo** (tipos, interfaces, factories, enums, helpers) y una capa de stubs que lanzan un error apuntando al link de pago al invocarse. Te sirve para:
->
-> - Explorar la API y los tipos sin pagar
-> - Probar la integración en tu IDE con autocompletado
-> - Verificar que tu `tsconfig`, `package.json` y patrones de DI encajan
-> - Escribir tus propios mocks / adapters encima de las interfaces
-
-### ¿Qué hay en cada versión?
-
-| Componente | Pública | Completa |
-|---|---|---|
-| Tipos e interfaces (domain, http, errors) | ✅ | ✅ |
-| Enums, constantes y helpers (`CBTE_TIPO`, `ARCA_URLS`, `isA`, `mapAlicuota`, etc.) | ✅ | ✅ |
-| Schemas Zod de validación | ✅ | ✅ |
-| Factory `createArca()` | ✅ (compila) | ✅ (funciona) |
-| `WsaaClient` (auth con ARCA) | ❌ stub | ✅ |
-| `WsfeClient` (FECAESolicitar, FECompUltimoAutorizado, FECompConsultar) | ❌ stub | ✅ |
-| `BillingService.emitir()` | ❌ stub | ✅ |
-| `ComprobantesService` (consultas) | ❌ stub | ✅ |
-| `CuitService` (Padrón A13) | ❌ stub | ✅ |
-| `PdfService` + `PuppeteerManager` (PDFs con QR AFIP) | ❌ stub | ✅ |
-| Templates HTML de factura / presupuesto | ❌ vacío | ✅ |
-| Scripts CLI (`generate-tra`, `sign-cms`, `submit-login`, `pipeline`, etc.) | ❌ placeholder | ✅ |
-| Tests E2E contra homologación | ❌ | ✅ |
-| 78 tests unitarios pasando | ❌ | ✅ |
-| Soporte por mail 30 días | ❌ | ✅ |
-| Actualizaciones futuras vía `git pull` | ❌ | ✅ |
-
-### Cómo comprar
-
-1. Pagá vía **[Mercado Pago (70.000 ARS)](https://mpago.la/31zH7xo)** — tarjeta, dinero en cuenta, o como prefieras.
-2. Una vez acreditado, **escribime a [juanbautistatordini@gmail.com](mailto:juanbautistatordini@gmail.com)** con:
-   - Comprobante de pago (captura del email de MP o número de operación)
-   - Tu **usuario de GitHub** (para agregarte al repo privado)
-3. En menos de 24 h hábiles te llega la invitación al repo. Aceptás y clonás.
-4. **30 días de soporte** incluidos por dudas de integración.
-
-> Pagás una vez, recibís updates de por vida. `git pull` y listo.
+| Componente | Estado |
+|---|---|
+| Tipos, enums, helpers, schemas Zod, errores | ✅ |
+| Factory `createArca()` y capa HTTP | ✅ |
+| `WsaaClient` (TRA, firma CMS con OpenSSL, cache del TA) | ✅ |
+| `WsfeClient` (FECAESolicitar, FECompUltimoAutorizado, FECompConsultar) | ✅ |
+| `BillingService.emitir()` y `ComprobantesService` | ✅ |
+| Tests unitarios + E2E contra homologación | ✅ |
+| `PdfService` + `PuppeteerManager` (PDFs con QR AFIP) y templates | 🚧 pendiente |
+| `CuitService` (Padrón A13) | 🚧 pendiente |
+| Scripts CLI (salvo `server.ts`) | 🚧 pendiente |

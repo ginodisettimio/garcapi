@@ -1,4 +1,3 @@
 // Re-exports del submódulo `bin/`
-// En la versión pública, los scripts son placeholders.
-// Ver https://mpago.la/31zH7xo para la versión completa.
+// Los scripts (salvo server.ts) son placeholders pendientes de implementación.
 export {}

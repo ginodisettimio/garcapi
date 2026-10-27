@@ -75,5 +75,5 @@ export class OpenSslCmsSigner implements CmsSigner {
   }
 }
 
-// Re-exports preservados para que las firmas importen igual que en la versión completa
+// Re-exports para que los errores se importen junto al signer
 export { CmsSignError, OpenSslNotFoundError, type ArcaError }

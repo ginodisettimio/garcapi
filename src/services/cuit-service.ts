@@ -1,8 +1,7 @@
 /**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
+ * Pendiente de implementación.
  */
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
+const PLACEHOLDER = 'No implementado todavía'
 
 export interface CuitInfo {
   cuit: string

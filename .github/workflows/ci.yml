@@ -34,9 +34,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      # Nota: la versión pública tiene la lógica de negocio como stubs,
-      # por lo que no se ejecutan tests. Los tests unitarios (78) y E2E
-      # están en la versión completa. Ver README.md.
+      # Los tests E2E (tests/integration) se saltean sin ARCA_CUIT
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
