@@ -84,7 +84,15 @@ export class ContingenciaService {
       const state = await store.read(arcaEnv)
       for (const q of objetivos) {
         if (state.caeas.some((c) => c.periodo === q.periodo && c.orden === q.orden)) continue
-        const caea = await wsfe.fecaeaSolicitar(auth, q.periodo, q.orden)
+        let caea: CaeaInfo
+        try {
+          caea = await wsfe.fecaeaSolicitar(auth, q.periodo, q.orden)
+        } catch (err) {
+          // La siguiente es anticipada (ARCA puede rechazarla con 15006): no debe impedir guardar la actual
+          if (q === actual) throw err
+          logger?.warn({ event: 'arca.caea.siguiente_error', periodo: q.periodo, orden: q.orden, err: String(err) }, 'No se pudo pedir el CAEA de la quincena siguiente; se reintenta en el próximo ciclo')
+          continue
+        }
         state.caeas.push({ ...caea, usado: false, sinMovimientoInformado: false })
         logger?.info({ event: 'arca.caea.obtenido', ...caea }, 'CAEA obtenido')
       }

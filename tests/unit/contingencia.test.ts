@@ -113,6 +113,19 @@ describe('ContingenciaService.prepararCaea', () => {
     expect(state.numeros['9-6']).toBe(41)
   })
 
+  it('si ARCA rechaza el CAEA de la quincena siguiente, igual guarda el de la actual', async () => {
+    const { contingencia, store } = await setup({
+      FECAEASolicitar: (a) =>
+        a.envelope.includes('<Periodo>202611</Periodo>')
+          ? '<ResultGet><Periodo>0</Periodo><Orden>0</Orden></ResultGet><Errors><Err><Code>15006</Code><Msg>Fecha de envío</Msg></Err></Errors>'
+          : caeaXml('202610', '2'),
+    })
+    expect((await contingencia.prepararCaea(new Date('2026-10-27T15:00:00-03:00'))).map((c) => c.periodo)).toEqual([202610])
+    const state = await store.read('homologacion')
+    expect(state.caeas.map((c) => c.periodo)).toEqual([202610])
+    expect(state.numeros['9-6']).toBe(41)
+  })
+
   it('si ARCA dice que ya fue otorgado (15008) lo recupera con FECAEAConsultar', async () => {
     const { contingencia, soap } = await setup({
       FECAEASolicitar: () => '<ResultGet><Periodo>0</Periodo><Orden>0</Orden></ResultGet><Errors><Err><Code>15008</Code><Msg>Existe un CAEA otorgado</Msg></Err></Errors>',
