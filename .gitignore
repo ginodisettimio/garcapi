@@ -53,3 +53,6 @@ desktop.ini
 # Test artifacts
 test-results/
 playwright-report/
+
+# Herramientas locales
+.impeccable/
