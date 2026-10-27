@@ -31,6 +31,7 @@ export function createArcaServer(deps: ArcaServerDeps): Express {
       const origin = req.headers.origin
       if (origins.includes('*') || (origin && origins.includes(origin))) {
         res.setHeader('Access-Control-Allow-Origin', origins.includes('*') ? '*' : origin!)
+        if (!origins.includes('*')) res.setHeader('Vary', 'Origin')
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
       }
