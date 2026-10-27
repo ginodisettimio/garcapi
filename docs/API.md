@@ -459,7 +459,7 @@ curl -H "Authorization: Bearer $TOKEN" https://facturacion.example.com/afip/fa-a
   "expiration": "2026-10-27T13:42:27.853Z",
   "header": {
     "source": "CN=wsaahomo, O=AFIP, C=AR, SERIALNUMBER=CUIT 33693450239",
-    "destination": "SERIALNUMBER=CUIT 20219478012, CN=pruebas",
+    "destination": "SERIALNUMBER=CUIT 20111111112, CN=pruebas",
     "uniqueId": "1793065329",
     "generationTime": "2026-10-26T22:42:27.853-03:00",
     "expirationTime": "2026-10-27T10:42:27.853-03:00"
