@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SoapClient` con default Axios
 - `TaStorage` con `FileTaStorage` y `MemoryTaStorage`
 - `EmisorProvider` con `StaticEmisorProvider` default
-- `PdfService` con Puppeteer + templates HTML
+- `PdfService` + `PuppeteerManager`: PDFs de factura/nota (con QR AFIP, RG 4892) y presupuesto; templates HTML por defecto y custom
 - `createArcaRouter()` y `createArcaServer()` para Express
 - Validación con Zod (reglas de negocio AFIP)
 - Jerarquía de errores tipados
@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dockerfile multi-stage
 - docker-compose.yml
 - GitHub Actions CI
+- `buildQrUrl` para armar la URL del QR AFIP
 
 ### Fixed
 - `items[].iva` se interpreta siempre como porcentaje. Antes `iva: 5` se tomaba como el Id 5 de ARCA y se facturaba al 21 % (lo mismo con 4, 6, 8 y 9). **Cambio de comportamiento:** los Ids de ARCA ya no se aceptan como `iva` y `mapAlicuota` lanza `ValidationError` ante una alícuota desconocida en vez de devolver 0 %.

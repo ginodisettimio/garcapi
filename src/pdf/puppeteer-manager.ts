@@ -1,8 +1,8 @@
-/**
- * Pendiente de implementación.
- */
-
-const PLACEHOLDER = 'No implementado todavía'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
+import PQueue from 'p-queue'
+import puppeteer, { type Browser, type Page } from 'puppeteer'
+import { PdfError } from '../domain/errors.js'
 
 /** Candidatos comunes a Chrome/Chromium instalados en el sistema. */
 export const SYSTEM_CHROME_CANDIDATES = [
@@ -42,37 +42,96 @@ export interface PuppeteerManagerOptions {
 }
 
 /**
+ * Resuelve el binario de Chrome: el explícito, o (si no hay
+ * `PUPPETEER_EXECUTABLE_PATH`) el primero instalado en el sistema.
+ * `undefined` deja que puppeteer use su env var o su Chrome descargado.
+ */
+function resolveExecutablePath(explicit?: string | null): string | undefined {
+  if (explicit) return explicit
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) return undefined
+  return SYSTEM_CHROME_CANDIDATES.find((p) => existsSync(p))
+}
+
+/**
  * Gestiona el ciclo de vida de una instancia de Puppeteer.
- * - Lanza un único browser y lo recicla después de N usos.
+ * - Lanza un único browser (lazy, en el primer uso) y lo recicla después de N usos.
  * - Expone `withPage(fn)` para correr una función con una página y
  *   contabilizar tareas activas (no recicla si hay tareas en curso).
  * - Encola trabajos con `PQueue` para limitar concurrencia.
  */
 export class PuppeteerManager {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(_opts?: PuppeteerManagerOptions) {}
+  private readonly queue: PQueue
+  private readonly maxUsos: number
+  private browser: Promise<Browser> | null = null
+  private usos = 0
+  private activas = 0
 
-  async withPage<T>(_fn: (page: unknown) => Promise<T>): Promise<T> {
-    void _fn
-    throw new Error(PLACEHOLDER)
+  constructor(private readonly opts: PuppeteerManagerOptions = {}) {
+    this.queue = new PQueue({ concurrency: opts.concurrency ?? 2 })
+    this.maxUsos = opts.maxUsos ?? 100
   }
 
-  /** No-op: en esta versión nunca se lanza un browser, así que no hay nada que cerrar. */
-  async close(): Promise<void> {}
+  async withPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
+    return this.queue.add(async () => {
+      const browser = await this.getBrowser()
+      this.activas++
+      let page: Page | undefined
+      try {
+        page = await browser.newPage()
+        return await fn(page)
+      } finally {
+        await page?.close().catch(() => undefined)
+        this.activas--
+        this.usos++
+        if (this.usos >= this.maxUsos && this.activas === 0) await this.close()
+      }
+    })
+  }
+
+  async close(): Promise<void> {
+    const pending = this.browser
+    this.browser = null
+    this.usos = 0
+    const browser = await pending?.catch(() => null)
+    await browser?.close()
+  }
+
+  private getBrowser(): Promise<Browser> {
+    if (!this.browser) {
+      this.browser = puppeteer
+        .launch({
+          headless: true,
+          executablePath: resolveExecutablePath(this.opts.executablePath),
+          args: [...DEFAULT_BROWSER_ARGS, ...(this.opts.args ?? [])],
+        })
+        .then((browser) => {
+          browser.on('disconnected', () => {
+            this.browser = null
+          })
+          return browser
+        })
+        .catch((err: unknown) => {
+          this.browser = null
+          throw new PdfError(`No se pudo iniciar Chrome: ${String(err)}`, 'BROWSER_LAUNCH_ERROR')
+        })
+    }
+    return this.browser
+  }
 }
 
 /**
  * Carga HTML en la página forzando charset UTF-8.
  */
-export async function setUtf8Content(_page: unknown, _html: string): Promise<void> {
-  void _page
-  void _html
-  throw new Error(PLACEHOLDER)
+export async function setUtf8Content(page: Page, html: string): Promise<void> {
+  const withCharset = /<meta[^>]+charset/i.test(html) ? html : `<meta charset="utf-8">${html}`
+  await page.setContent(withCharset, { waitUntil: 'load' })
 }
 
 /** Utilidad: resuelve una ruta absoluta, lanzando error si no existe. */
-export function resolveTemplatePath(_templatePath: string, _label: string): string {
-  void _templatePath
-  void _label
-  throw new Error(PLACEHOLDER)
+export function resolveTemplatePath(templatePath: string, label: string): string {
+  const abs = path.resolve(templatePath)
+  if (!existsSync(abs)) {
+    throw new PdfError(`No existe el template de ${label}: ${abs}`, 'TEMPLATE_NOT_FOUND', { path: abs })
+  }
+  return abs
 }

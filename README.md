@@ -103,6 +103,16 @@ await arca.close()
 
 Ver [.env.example](.env.example).
 
+### Templates de PDF custom
+
+`ARCA_TEMPLATE_FACTURA` / `ARCA_TEMPLATE_PRESUPUESTO` (o `pdf.templateFactura` / `pdf.templatePresupuesto`) apuntan a un HTML propio. Placeholders:
+
+- `{{campo}}` → texto escapado: `letra`, `codigo`, `tipoComprobante`, `ptoVta`, `nro`, `fecha`, `cuitEmisor`, `razonSocialEmisor`, `domicilioEmisor`, `condicionIvaEmisor`, `ingresosBrutos`, `inicioActividades`, `docReceptor`, `razonSocialReceptor`, `domicilioReceptor`, `condicionIvaReceptor`, `condicionVenta`, `cbtesAsoc`, `datosBancarios`, `cae`, `vtoCae`, `qr` (data URL del QR AFIP), `titulo`.
+- `{{{items}}}` y `{{{totales}}}` → HTML generado (tabla de ítems y totales según la letra).
+- Presupuesto: además `tituloDocumento` y `referenciaOrigen` (sin `cae`, `vtoCae`, `qr` ni `letra`).
+
+Sin `ARCA_PUPPETEER_EXECUTABLE_PATH`, se usa `PUPPETEER_EXECUTABLE_PATH`, un Chrome del sistema o el de `npx puppeteer browsers install chrome`.
+
 ---
 
 ## 📂 Estructura del proyecto
@@ -276,6 +286,6 @@ MIT © Tordini. Ver [LICENSE](LICENSE).
 | `WsfeClient` (FECAESolicitar, FECompUltimoAutorizado, FECompConsultar) | ✅ |
 | `BillingService.emitir()` y `ComprobantesService` | ✅ |
 | Tests unitarios + E2E contra homologación | ✅ |
-| `PdfService` + `PuppeteerManager` (PDFs con QR AFIP) y templates | 🚧 pendiente |
+| `PdfService` + `PuppeteerManager` (PDFs con QR AFIP) y templates | ✅ |
 | `CuitService` (Padrón A13) | 🚧 pendiente |
 | Scripts CLI (salvo `server.ts`) | 🚧 pendiente |

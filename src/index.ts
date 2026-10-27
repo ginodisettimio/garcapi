@@ -258,7 +258,7 @@ export type {
 } from './services/index.js'
 
 // PDF
-export { PuppeteerManager, PdfService } from './pdf/index.js'
+export { PuppeteerManager, PdfService, buildQrUrl } from './pdf/index.js'
 export type {
   PdfServiceOptions,
   PdfGenerator,

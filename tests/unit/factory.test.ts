@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { createArca } from '../../src/index.js'
 
-// Skip: el último caso requiere PdfService/PuppeteerManager, pendientes de implementación.
-describe.skip('createArca factory', () => {
+describe('createArca factory', () => {
   it('construye todas las dependencias con defaults', () => {
     const arca = createArca({
       cuit: 20223565078,

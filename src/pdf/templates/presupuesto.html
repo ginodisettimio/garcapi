@@ -1,1 +1,63 @@
-<!-- Template pendiente de implementación -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>{{titulo}}</title>
+<style>
+  @page { size: A4; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #111; margin: 0; }
+  .header { display: grid; grid-template-columns: 1fr 70px 1fr; border: 1px solid #000; }
+  .header > div { padding: 8px 10px; }
+  .emisor h1 { font-size: 15pt; margin: 0 0 6px; }
+  .letra { border-left: 1px solid #000; border-right: 1px solid #000; text-align: center; }
+  .letra .l { font-size: 30pt; font-weight: bold; line-height: 1; }
+  .letra .cod { font-size: 6pt; margin-top: 4px; }
+  .comprobante h2 { font-size: 15pt; margin: 0 0 6px; }
+  .box { border: 1px solid #000; border-top: 0; padding: 8px 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+  p { margin: 2px 0; }
+  table { width: 100%; border-collapse: collapse; }
+  .items { margin-top: 8px; }
+  .items th { background: #e6e6e6; border: 1px solid #000; padding: 4px 6px; text-align: left; font-size: 9pt; }
+  .items td { border-bottom: 1px solid #ccc; padding: 4px 6px; vertical-align: top; }
+  .num, .items th.num { text-align: right; white-space: nowrap; }
+  .totales { width: 50%; margin: 10px 0 0 auto; }
+  .totales td { padding: 3px 6px; }
+  .totales .total td { font-weight: bold; font-size: 12pt; border-top: 1px solid #000; }
+  .nota { margin-top: 14px; text-align: center; font-size: 8pt; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="emisor">
+      <h1>{{razonSocialEmisor}}</h1>
+      <p><b>Domicilio:</b> {{domicilioEmisor}}</p>
+      <p><b>Condición frente al IVA:</b> {{condicionIvaEmisor}}</p>
+    </div>
+    <div class="letra">
+      <div class="l">X</div>
+      <div class="cod">NO VÁLIDO COMO FACTURA</div>
+    </div>
+    <div class="comprobante">
+      <h2>{{tituloDocumento}}</h2>
+      <p><b>Nro:</b> {{nro}}</p>
+      <p><b>Fecha:</b> {{fecha}}</p>
+      <p><b>CUIT:</b> {{cuitEmisor}}</p>
+      <p><b>Ingresos Brutos:</b> {{ingresosBrutos}}</p>
+      <p><b>Inicio de actividades:</b> {{inicioActividades}}</p>
+    </div>
+  </div>
+  <div class="box grid2">
+    <p><b>{{docReceptor}}</b></p>
+    <p><b>Razón social:</b> {{razonSocialReceptor}}</p>
+    <p><b>Condición frente al IVA:</b> {{condicionIvaReceptor}}</p>
+    <p><b>Domicilio:</b> {{domicilioReceptor}}</p>
+    <p><b>Condición de venta:</b> {{condicionVenta}}</p>
+    <p>{{referenciaOrigen}}</p>
+  </div>
+  {{{items}}}
+  {{{totales}}}
+  <p class="nota">Documento no válido como factura.</p>
+</body>
+</html>
