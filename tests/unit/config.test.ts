@@ -21,6 +21,12 @@ describe('loadConfig', () => {
     expect(cfg.http.port).toBe(3001)
     expect(cfg.montoMaxConsumidorFinal).toBe(10_000_000)
     expect(cfg.pdf).toEqual({ formato: 'a4', anchoTicketMm: 80 })
+    expect(cfg.taDir).toBeNull()
+  })
+
+  it('ARCA_TA_DIR separa el TA de los certs', () => {
+    const cfg = loadConfig({ cwd: workdir, overrides: { ARCA_TA_DIR: './ta' } })
+    expect(cfg.taDir).toBe(path.join(workdir, 'ta'))
   })
 
   it('ARCA_PDF_FORMATO=ticket con ancho configurable; valor inválido lanza ConfigError', () => {

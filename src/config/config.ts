@@ -13,6 +13,11 @@ export interface ArcaConfig {
   arcaService: ArcaService
   /** Directorio base de certificados. */
   certsDir: string
+  /**
+   * Directorio base del TA cacheado (`<taDir>/<env>/<archivo>`). `null` = mismo que `certsDir`.
+   * Separarlo permite montar los certs en solo lectura.
+   */
+  taDir: string | null
   /** Path al directorio del entorno actual. */
   envDir: string
   /** Nombres de archivos dentro de cada entorno. */
@@ -126,10 +131,13 @@ export function loadConfig(options: {
     throw new ConfigError(`ARCA_PDF_FORMATO inválido: "${pdfFormato}". Valores válidos: a4, ticket`)
   }
 
+  const taDirRaw = (env.ARCA_TA_DIR ?? '').toString().trim()
+
   const config: ArcaConfig = {
     arcaEnv,
     arcaService,
     certsDir,
+    taDir: taDirRaw ? path.resolve(cwd, taDirRaw) : null,
     envDir,
     files: {
       cert: (env.ARCA_CERT_FILE ?? 'cert.crt').toString(),
@@ -183,6 +191,7 @@ export interface ArcaConfigEnv {
   ARCA_ENV?: string
   ARCA_SERVICE?: string
   CERTS_DIR?: string
+  ARCA_TA_DIR?: string
   ARCA_CERT_FILE?: string
   ARCA_KEY_FILE?: string
   ARCA_TA_FILE?: string

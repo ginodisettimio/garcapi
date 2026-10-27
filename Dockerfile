@@ -32,13 +32,14 @@ FROM node:20-bookworm-slim AS runtime
 LABEL org.opencontainers.image.title="arca-api-tordini" \
       org.opencontainers.image.description="Cliente ARCA/AFIP para facturacion electronica (WSAA + WSFEv1)" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.source="https://github.com/JuanBautistaTordini/Arca-api-Tordini-public"
+      org.opencontainers.image.source="https://github.com/ginodisettimio/garcapi"
 
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_SKIP_DOWNLOAD=true \
     NODE_ENV=production \
     ARCA_ENV=homologacion \
     CERTS_DIR=/app/certs \
+    ARCA_TA_DIR=/app/ta \
     ARCA_HTTP_HOST=0.0.0.0 \
     ARCA_HTTP_PORT=3001 \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
@@ -94,9 +95,10 @@ RUN set -eux \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Crear usuario no-root
-RUN groupadd -r arca && useradd -r -g arca -m arca \
-    && mkdir -p /app/certs /app/dist \
+# Usuario no-root con UID/GID fijos (10001) para poder dar permisos de lectura a los certs del host.
+# El TA se escribe en /app/ta (volumen), así los certs se montan en solo lectura.
+RUN groupadd -r -g 10001 arca && useradd -r -u 10001 -g arca -m arca \
+    && mkdir -p /app/certs /app/ta /app/dist \
     && chown -R arca:arca /app
 
 # Instalar solo deps de producción

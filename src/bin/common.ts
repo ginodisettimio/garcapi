@@ -45,7 +45,7 @@ export function cliContext(envArg?: string) {
       return new WsaaClient({
         arcaEnv,
         arcaService,
-        storage: new FileTaStorage(config.certsDir, taFile),
+        storage: new FileTaStorage(config.taDir ?? config.certsDir, taFile),
         signer: new OpenSslCmsSigner({ verifyOnInit: true }),
         soap,
         certPath,

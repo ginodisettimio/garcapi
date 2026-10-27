@@ -44,6 +44,8 @@ export interface CreateArcaOptions {
   arcaService?: ArcaService
   /** Directorio de certificados. Default './certs' o CERTS_DIR. */
   certsDir?: string
+  /** Directorio del TA cacheado. Default ARCA_TA_DIR o el de los certs. */
+  taDir?: string
   /** Logger custom. Si no, usa ConsoleLogger. */
   logger?: Logger
   /** Habilitar generación de PDF (default true). */
@@ -161,8 +163,8 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
   })
 
   // 4) Storage
-  const storage: TaStorage =
-    opts.taStorage ?? new FileTaStorage(opts.certsDir ?? config.certsDir, config.files.ta)
+  const taDir = opts.taDir ?? config.taDir ?? opts.certsDir ?? config.certsDir
+  const storage: TaStorage = opts.taStorage ?? new FileTaStorage(taDir, config.files.ta)
 
   // 5) CMS Signer
   const signer: CmsSigner = opts.cmsSigner ?? new OpenSslCmsSigner()
@@ -228,7 +230,7 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
   const padronWsaa = new WsaaClient({
     arcaEnv,
     arcaService: 'ws_sr_padron_a13',
-    storage: opts.padronTaStorage ?? new FileTaStorage(opts.certsDir ?? config.certsDir, 'TA_ws_sr_padron_a13.xml'),
+    storage: opts.padronTaStorage ?? new FileTaStorage(taDir, 'TA_ws_sr_padron_a13.xml'),
     signer,
     soap,
     certPath,

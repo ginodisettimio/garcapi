@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   arca:
     build:
@@ -9,22 +7,33 @@ services:
     container_name: arca-api
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      # Solo localhost: exponer por HTTPS a través de un reverse proxy (ver README → Deploy)
+      - "127.0.0.1:3001:3001"
     environment:
       - NODE_ENV=production
       - ARCA_ENV=${ARCA_ENV:-homologacion}
+      # Emisor (obligatorios para dist/bin/server.js)
+      - ARCA_CUIT=${ARCA_CUIT:?ARCA_CUIT is required}
+      - ARCA_RAZON_SOCIAL=${ARCA_RAZON_SOCIAL:?ARCA_RAZON_SOCIAL is required}
+      - ARCA_DOMICILIO=${ARCA_DOMICILIO:?ARCA_DOMICILIO is required}
+      - ARCA_CONDICION_IVA=${ARCA_CONDICION_IVA:?ARCA_CONDICION_IVA is required}
+      - ARCA_INICIO_ACTIVIDADES=${ARCA_INICIO_ACTIVIDADES:?ARCA_INICIO_ACTIVIDADES is required}
+      - ARCA_INGRESOS_BRUTOS=${ARCA_INGRESOS_BRUTOS:?ARCA_INGRESOS_BRUTOS is required}
+      - ARCA_PTO_VTA_DEFAULT=${ARCA_PTO_VTA_DEFAULT:?ARCA_PTO_VTA_DEFAULT is required}
+      - ARCA_PDF_FORMATO=${ARCA_PDF_FORMATO:-a4}
       - CERTS_DIR=/app/certs
+      - ARCA_TA_DIR=/app/ta
       - ARCA_HTTP_HOST=0.0.0.0
       - ARCA_HTTP_PORT=3001
-      - ARCA_HTTP_CORS_ORIGINS=${ARCA_HTTP_CORS_ORIGINS:-}
+      - ARCA_CORS_ORIGINS=${ARCA_CORS_ORIGINS:?ARCA_CORS_ORIGINS is required (origen del POS, ej. https://pos.example.com)}
       - ARCA_JWT_SECRET=${ARCA_JWT_SECRET:?ARCA_JWT_SECRET is required}
       - ARCA_LOG_LEVEL=${ARCA_LOG_LEVEL:-info}
       - ARCA_PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
     volumes:
-      # Montar certs como read-only desde el host
+      # Certs del host en solo lectura (legibles por UID/GID 10001, ver README → Deploy)
       - ./certs:/app/certs:ro
-      # Opcional: persistir el TA cacheado entre reinicios
-      - arca-data:/app/certs
+      # TA cacheado: persiste entre reinicios (WSAA rechaza un login nuevo mientras haya uno vigente)
+      - arca-ta:/app/ta
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/health"]
       interval: 30s
@@ -38,5 +47,5 @@ services:
         max-file: "3"
 
 volumes:
-  arca-data:
+  arca-ta:
     driver: local

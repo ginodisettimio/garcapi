@@ -7,11 +7,8 @@ coverage/
 .env.production
 .env.*.local
 
-# Certs (nunca commitear)
-certs/**/*.crt
-certs/**/*.key
-certs/**/*.pem
-certs/**/TA_*.xml
+# Certs, CSR, TRA/CMS y TA: nunca entran a la imagen (se montan en runtime)
+certs/**
 !certs/**/.gitkeep
 
 # OS / editor
