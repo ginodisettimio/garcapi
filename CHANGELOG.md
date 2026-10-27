@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - docker-compose.yml
 - GitHub Actions CI
 - `buildQrUrl` para armar la URL del QR AFIP
+- Validación de Consumidor Final por monto: desde `MONTO_MAX_CONSUMIDOR_FINAL` ($10.000.000, RG 5700/2025) se rechaza DocTipo 99; configurable con `ARCA_MONTO_MAX_CF`
 
 ### Fixed
 - `items[].iva` se interpreta siempre como porcentaje. Antes `iva: 5` se tomaba como el Id 5 de ARCA y se facturaba al 21 % (lo mismo con 4, 6, 8 y 9). **Cambio de comportamiento:** los Ids de ARCA ya no se aceptan como `iva` y `mapAlicuota` lanza `ValidationError` ante una alícuota desconocida en vez de devolver 0 %.

@@ -207,7 +207,14 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
   }
 
   // 11) Services
-  const billing = new BillingService({ emisor, wsaa, wsfe, logger, pdf: pdf ?? undefined })
+  const billing = new BillingService({
+    emisor,
+    wsaa,
+    wsfe,
+    logger,
+    pdf: pdf ?? undefined,
+    montoMaxConsumidorFinal: config.montoMaxConsumidorFinal,
+  })
   const comprobantes = new ComprobantesService({ emisor, wsaa, wsfe, logger })
   const padronWsaa = new WsaaClient({
     arcaEnv,
@@ -334,6 +341,7 @@ export {
   CONDICIONES_IVA_PARA_BC,
   CONCEPTO,
   MONEDA,
+  MONTO_MAX_CONSUMIDOR_FINAL,
   IVA_ID_TO_PERCENT,
   IVA_PERCENT_TO_ID,
   IVA_PERCENT_ALLOWED,

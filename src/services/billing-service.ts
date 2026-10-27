@@ -1,5 +1,5 @@
 import PQueue from 'p-queue'
-import { CONDICION_IVA_LABELS, type CbteTipo } from '../domain/index.js'
+import { CONDICION_IVA_LABELS, DOC_TIPO, MONTO_MAX_CONSUMIDOR_FINAL, type CbteTipo } from '../domain/index.js'
 import { letraComprobante, prefijoArchivo } from '../domain/comprobante.js'
 import { ComprobanteRechazadoError, ValidationError } from '../domain/errors.js'
 import { calcularImportes } from '../domain/iva.js'
@@ -20,6 +20,11 @@ export interface BillingServiceDeps {
   logger?: Logger
   /** Generador de PDF. Si está, se llama después de emitir. Si no, se omite. */
   pdf?: PdfGenerator
+  /**
+   * Importe (en pesos) desde el cual se rechaza Consumidor Final sin identificar (DocTipo 99).
+   * Default `MONTO_MAX_CONSUMIDOR_FINAL`; `0` desactiva la validación.
+   */
+  montoMaxConsumidorFinal?: number
 }
 
 /**
@@ -58,6 +63,15 @@ export class BillingService {
     const req = parsed.data
     const cbteTipo = req.cbteTipo as CbteTipo
     const fecha = req.fecha ?? todayYmd()
+    const importeTotal = calcularImportes(cbteTipo, req.items).impTotal
+
+    const limiteCf = this.deps.montoMaxConsumidorFinal ?? MONTO_MAX_CONSUMIDOR_FINAL
+    if (limiteCf > 0 && req.receptor.docTipo === DOC_TIPO.CONSUMIDOR_FINAL && importeTotal * req.cotizacion >= limiteCf) {
+      throw new ValidationError(
+        `Desde $${limiteCf.toLocaleString('es-AR')} el Consumidor Final debe identificarse con DNI, CUIL o CDI`,
+        [{ path: ['receptor', 'docTipo'], message: 'receptor_debe_identificarse_por_monto' }],
+      )
+    }
 
     const emisor = await this.deps.emisor.getEmisor()
     const { auth } = await this.deps.wsaa.authenticate(emisor.cuit)
@@ -96,7 +110,6 @@ export class BillingService {
       this.deps.logger?.warn({ event: 'arca.billing.observaciones', observaciones }, 'CAE con observaciones')
     }
 
-    const importeTotal = calcularImportes(cbteTipo, req.items).impTotal
     const fileName =
       `${prefijoArchivo(cbteTipo)}_${letraComprobante(cbteTipo)}_` +
       `${String(req.ptoVta).padStart(5, '0')}-${String(nro).padStart(8, '0')}.pdf`

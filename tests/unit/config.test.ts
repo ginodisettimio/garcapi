@@ -19,6 +19,12 @@ describe('loadConfig', () => {
     expect(cfg.files.key).toBe('private.key')
     expect(cfg.files.ta).toBe('TA_wsfe.xml')
     expect(cfg.http.port).toBe(3001)
+    expect(cfg.montoMaxConsumidorFinal).toBe(10_000_000)
+  })
+
+  it('ARCA_MONTO_MAX_CF sobrescribe el límite de Consumidor Final', () => {
+    const cfg = loadConfig({ cwd: workdir, overrides: { ARCA_MONTO_MAX_CF: '0' } })
+    expect(cfg.montoMaxConsumidorFinal).toBe(0)
   })
 
   it('lee .env del cwd', async () => {

@@ -26,7 +26,7 @@ class FakeSoapClient implements SoapClient {
   }
 }
 
-async function makeService(caeResponse: string, pdf?: PdfGenerator) {
+async function makeService(caeResponse: string, pdf?: PdfGenerator, montoMaxConsumidorFinal?: number) {
   const soap = new FakeSoapClient(caeResponse)
   const storage = new MemoryTaStorage()
   await storage.write('homologacion', TA)
@@ -53,6 +53,7 @@ async function makeService(caeResponse: string, pdf?: PdfGenerator) {
     wsfe: new WsfeClient(soap, 'homologacion'),
     logger: new SilentLogger(),
     pdf,
+    montoMaxConsumidorFinal,
   })
   return { billing, soap }
 }
@@ -118,5 +119,46 @@ describe('BillingService.emitir', () => {
       'FECompUltimoAutorizado',
       'FECAESolicitar',
     ])
+  })
+
+  describe('Consumidor Final por monto (RG 5700/2025)', () => {
+    const conTotal = (neto: number, extra: object = {}) => ({
+      ...facturaB,
+      items: [{ descripcion: 'x', cantidad: 1, precioUnitario: neto, iva: 21 }],
+      ...extra,
+    })
+
+    it('rechaza CF sin identificar desde $10.000.000 sin llamar a ARCA', async () => {
+      const { billing, soap } = await makeService(CAE_OK)
+      const err = await billing.emitir(conTotal(10_000_000 / 1.21)).catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(ValidationError)
+      expect((err as ValidationError).issues?.[0]?.message).toBe('receptor_debe_identificarse_por_monto')
+      expect(soap.calls).toHaveLength(0)
+    })
+
+    it('acepta CF por debajo del límite', async () => {
+      const { billing } = await makeService(CAE_OK)
+      await expect(billing.emitir(conTotal(8_264_462.80))).resolves.toMatchObject({ importeTotal: 9_999_999.99 })
+    })
+
+    it('acepta el mismo monto con DNI', async () => {
+      const { billing } = await makeService(CAE_OK)
+      const r = await billing.emitir(
+        conTotal(10_000_000, { receptor: { docTipo: 96, docNro: 12345678, condicionIVA: 5, razonSocial: 'Juan Perez' } }),
+      )
+      expect(r.cae).toBe('74123456789012')
+    })
+
+    it('convierte a pesos con la cotización', async () => {
+      const { billing } = await makeService(CAE_OK)
+      await expect(billing.emitir(conTotal(10_000, { moneda: 'DOL', cotizacion: 1000 }))).rejects.toBeInstanceOf(ValidationError)
+    })
+
+    it('límite configurable; 0 lo desactiva', async () => {
+      const bajo = await makeService(CAE_OK, undefined, 1000)
+      await expect(bajo.billing.emitir(facturaB)).rejects.toBeInstanceOf(ValidationError)
+      const off = await makeService(CAE_OK, undefined, 0)
+      await expect(off.billing.emitir(conTotal(50_000_000))).resolves.toMatchObject({ cae: '74123456789012' })
+    })
   })
 })

@@ -104,6 +104,7 @@ await arca.close()
 | `ARCA_PUPPETEER_MAX_USOS` | `100` | Reiniciar browser cada N usos |
 | `ARCA_TEMPLATE_FACTURA` | _(built-in)_ | Path a un template HTML de Factura custom |
 | `ARCA_TEMPLATE_PRESUPUESTO` | _(built-in)_ | Path a un template HTML de Presupuesto custom |
+| `ARCA_MONTO_MAX_CF` | `10000000` | Importe desde el cual se rechaza Consumidor Final sin identificar (RG 5700/2025). `0` desactiva |
 | `ARCA_LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` \| `silent` |
 
 Ver [.env.example](.env.example).

@@ -173,3 +173,10 @@ export const MONEDA_COTIZACION: Record<Moneda, number> = {
   DOL: 0, // el usuario debe especificar
   EUR: 0,
 }
+
+/**
+ * Importe (en pesos) a partir del cual una factura a Consumidor Final
+ * sin identificar (DocTipo 99) no es válida: hay que consignar DNI, CUIL o CDI
+ * (RG 5700/2025: $10.000.000). ARCA lo actualiza: se sobrescribe con `ARCA_MONTO_MAX_CF`.
+ */
+export const MONTO_MAX_CONSUMIDOR_FINAL = 10_000_000

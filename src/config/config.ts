@@ -1,5 +1,6 @@
 import path from 'node:path'
 import dotenv from 'dotenv'
+import { MONTO_MAX_CONSUMIDOR_FINAL } from '../domain/constants.js'
 import { isArcaEnv, type ArcaEnv, type ArcaService, DEFAULT_ARCA_SERVICE } from '../domain/env.js'
 import { ConfigError } from '../domain/errors.js'
 import type { LogLevel } from '../domain/logger.js'
@@ -47,6 +48,11 @@ export interface ArcaConfig {
     factura: string | null
     presupuesto: string | null
   }
+  /**
+   * Importe desde el cual se rechaza facturar a Consumidor Final sin identificar
+   * (DocTipo 99). `0` desactiva la validación.
+   */
+  montoMaxConsumidorFinal: number
   /** Nivel de logging. */
   logLevel: LogLevel
 }
@@ -143,6 +149,7 @@ export function loadConfig(options: {
       factura: (env.ARCA_TEMPLATE_FACTURA ?? '').toString().trim() || null,
       presupuesto: (env.ARCA_TEMPLATE_PRESUPUESTO ?? '').toString().trim() || null,
     },
+    montoMaxConsumidorFinal: Number(env.ARCA_MONTO_MAX_CF ?? MONTO_MAX_CONSUMIDOR_FINAL),
     logLevel: ((env.ARCA_LOG_LEVEL ?? 'info').toString() as LogLevel),
   }
 
@@ -177,5 +184,6 @@ export interface ArcaConfigEnv {
   ARCA_PUPPETEER_MAX_USOS?: string
   ARCA_TEMPLATE_FACTURA?: string
   ARCA_TEMPLATE_PRESUPUESTO?: string
+  ARCA_MONTO_MAX_CF?: string
   ARCA_LOG_LEVEL?: string
 }
