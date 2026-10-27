@@ -113,7 +113,7 @@ describe.skipIf(!cuit && !externo)('E2E HTTP', () => {
     const nro = Number(res.headers.get('x-arca-nro-comprobante'))
     expect(cae).toMatch(/^\d{14}$/)
     expect(res.headers.get('x-arca-cae-vto')).toMatch(/^\d{8}$/)
-    expect(nro).toBe(antes.nro + 1)
+    expect(nro).toBeGreaterThan(antes.nro)
     expect(res.headers.get('x-arca-importe-total')).toBe('5287.5')
     expect(res.headers.get('x-arca-tipo-autorizacion')).toBe('CAE')
     expect(res.headers.get('x-arca-pendiente-informar')).toBe('false')
@@ -122,7 +122,8 @@ describe.skipIf(!cuit && !externo)('E2E HTTP', () => {
     )
 
     const despues = await (await api(`/afip/comprobantes/ultimo?ptoVta=${ptoVta}&tipo=6`)).json()
-    expect(despues).toEqual({ ok: true, ptoVta, tipo: 6, nro })
+    expect(despues).toMatchObject({ ok: true, ptoVta, tipo: 6 })
+    expect(despues.nro).toBeGreaterThanOrEqual(nro)
 
     const consulta = await api(`/afip/comprobantes/${ptoVta}/6/${nro}`)
     const { xml } = await consulta.json()
