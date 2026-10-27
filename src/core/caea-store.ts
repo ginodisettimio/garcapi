@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import type { CbteTipo } from '../domain/constants.js'
 import type { ArcaEnv } from '../domain/env.js'
 import { FileSystemError } from '../domain/errors.js'
 import type { CaeaInfo } from '../domain/types.js'
@@ -11,7 +12,7 @@ export interface ComprobanteCaeaPendiente {
   id: string
   caea: string
   ptoVta: number
-  cbteTipo: number
+  cbteTipo: CbteTipo
   nro: number
   /** Fecha y hora de generación (YYYYMMDDHHMMSS). */
   cbteFchHsGen: string

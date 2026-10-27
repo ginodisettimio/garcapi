@@ -88,6 +88,12 @@ export class BillingService {
       )
     }
 
+    if (this.deps.contingencia && req.ptoVta === this.deps.contingencia.ptoVta) {
+      throw new ValidationError(`El punto de venta ${req.ptoVta} es el de contingencia (CAEA): no se usa para emitir con CAE`, [
+        { path: ['ptoVta'], message: 'ptoVta_es_de_contingencia' },
+      ])
+    }
+
     const emisor = await this.deps.emisor.getEmisor()
     const detalle: FeDetalle = {
       cbteTipo,

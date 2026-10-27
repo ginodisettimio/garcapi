@@ -160,6 +160,15 @@ describe('BillingService con contingencia', () => {
     await expect(billing.emitir(facturaB)).rejects.toBeInstanceOf(ComprobanteRechazadoError)
   })
 
+  it('no deja emitir con CAE en el punto de venta de contingencia', async () => {
+    const { billing, soap } = await setup()
+    await expect(billing.emitir({ ...facturaB, ptoVta: 9 })).rejects.toMatchObject({
+      code: 'VALIDATION_ERROR',
+      issues: [{ path: ['ptoVta'], message: 'ptoVta_es_de_contingencia' }],
+    })
+    expect(soap.calls).toHaveLength(0)
+  })
+
   it('sin contingencia configurada el error de red se propaga', async () => {
     const { billing, soap } = await setup(undefined, { contingencia: false })
     soap.caido.add('FECompUltimoAutorizado')
@@ -190,6 +199,21 @@ describe('ContingenciaService.informarPendientes', () => {
     expect(env).toContain('<CAEA>9202610' + '20000</CAEA>')
     expect(env).toMatch(/<CbteFchHsGen>\d{14}<\/CbteFchHsGen>/)
     expect(env.indexOf('<Iva>')).toBeLessThan(env.indexOf('<CAEA>'))
+  })
+
+  it('si ARCA rechaza porque ya lo tenía informado (corte tras aceptarlo), lo da por informado', async () => {
+    const { billing, contingencia, soap, store } = await setup({
+      FECAEARegInformativo: () => '<Resultado>R</Resultado><Obs><Code>1504</Code><Msg>Comprobante ya informado</Msg></Obs>',
+      FECompConsultar: () => '<ResultGet><CodAutorizacion>9202610' + '20000</CodAutorizacion><EmisionTipo>CAEA</EmisionTipo></ResultGet>',
+    })
+    await contingencia.prepararCaea(new Date('2026-10-26T15:00:00-03:00'))
+    soap.caido.add('FECompUltimoAutorizado')
+    await billing.emitir(facturaB)
+    soap.caido.clear()
+
+    const informe = await contingencia.informarPendientes(new Date('2026-10-26T18:00:00-03:00'))
+    expect(informe).toMatchObject({ informados: ['9-6-42'], rechazados: [] })
+    expect((await store.read('homologacion')).pendientes).toHaveLength(0)
   })
 
   it('informa sin movimiento los CAEA vencidos que no se usaron (una sola vez)', async () => {

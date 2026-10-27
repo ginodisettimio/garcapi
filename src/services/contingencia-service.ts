@@ -175,7 +175,7 @@ export class ContingenciaService {
           caea: p.caea,
           cbteFchHsGen: p.cbteFchHsGen,
         })
-        if (tag(xml, 'Resultado') === 'A') {
+        if (tag(xml, 'Resultado') === 'A' || (await this.yaInformado(auth, p))) {
           state.pendientes = state.pendientes.filter((x) => x.id !== p.id)
           await store.write(arcaEnv, state)
           informe.informados.push(p.id)
@@ -224,6 +224,19 @@ export class ContingenciaService {
   /** Estado actual: CAEAs guardados, numeración y pendientes. */
   estado(): Promise<CaeaState> {
     return this.deps.store.read(this.deps.arcaEnv)
+  }
+
+  /**
+   * ¿ARCA ya tiene este comprobante con este CAEA? Pasa si el proceso se cortó entre que ARCA
+   * aceptó el informe y se guardó el estado: el reintento se rechaza y el pendiente quedaría trabado.
+   */
+  private async yaInformado(auth: Awaited<ReturnType<ContingenciaService['auth']>>, p: ComprobanteCaeaPendiente): Promise<boolean> {
+    try {
+      const xml = await this.deps.wsfe.feCompConsultar(auth, p.ptoVta, p.cbteTipo, p.nro)
+      return tag(xml, 'CodAutorizacion') === p.caea
+    } catch {
+      return false
+    }
   }
 
   private async auth() {
