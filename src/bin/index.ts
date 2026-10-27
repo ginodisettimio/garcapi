@@ -1,3 +1,2 @@
-// Re-exports del submódulo `bin/`
-// Los scripts (salvo server.ts) son placeholders pendientes de implementación.
+// Scripts CLI de `bin/`: cada archivo es un ejecutable (ver package.json → bin).
 export {}

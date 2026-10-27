@@ -92,6 +92,51 @@ export class WsfeClient {
     })
   }
 
+  /** FEDummy. Verifica la conectividad con WSFEv1 (no requiere autenticación). */
+  async feDummy(): Promise<{ appServer: string; dbServer: string; authServer: string }> {
+    const action = 'FEDummy'
+    const res = await this.soap.post({
+      url: ARCA_URLS[this.arcaEnv].wsfe,
+      action,
+      soapActionNs: WSFE_SOAP_NS,
+      envelope:
+        '<?xml version="1.0" encoding="utf-8"?>' +
+        '<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">' +
+        `<soap:Body><${action} xmlns="${WSFE_SOAP_NS}"/></soap:Body>` +
+        '</soap:Envelope>',
+    })
+    assertSinFault(res, action)
+    return {
+      appServer: tag(res, 'AppServer') ?? '',
+      dbServer: tag(res, 'DbServer') ?? '',
+      authServer: tag(res, 'AuthServer') ?? '',
+    }
+  }
+
+  /**
+   * FEParamGetPtosVenta. Puntos de venta habilitados para el CUIT.
+   * Devuelve `[]` si ARCA responde "sin resultados" (error 602).
+   */
+  async feParamGetPtosVenta(
+    auth: ArcaAuth,
+  ): Promise<{ nro: number; emisionTipo: string; bloqueado: boolean; fchBaja: string | null }[]> {
+    const action = 'FEParamGetPtosVenta'
+    const res = await this.call(action, auth, '')
+    assertSinFault(res, action)
+    const errores = parseErrores(res)
+    if (errores.length > 0 && errores.every((e) => e.Code === 602)) return []
+    assertSinErrores(res, action)
+    return tags(res, 'PtoVenta').map((p) => {
+      const fchBaja = tag(p, 'FchBaja')
+      return {
+        nro: Number(tag(p, 'Nro')),
+        emisionTipo: tag(p, 'EmisionTipo') ?? '',
+        bloqueado: tag(p, 'Bloqueado') === 'S',
+        fchBaja: fchBaja && fchBaja !== 'NULL' ? fchBaja : null,
+      }
+    })
+  }
+
   /** FECompUltimoAutorizado. Devuelve el número del último comprobante autorizado. */
   async feCompUltimoAutorizado(
     auth: ArcaAuth,

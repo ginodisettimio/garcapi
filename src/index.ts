@@ -353,7 +353,9 @@ export {
   nombreComprobante,
   prefijoArchivo,
   isArcaEnv,
+  isArcaService,
   ARCA_ENVIRONMENTS,
+  ARCA_SERVICES,
   DEFAULT_ARCA_SERVICE,
 } from './domain/index.js'
 

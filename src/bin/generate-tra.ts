@@ -1,25 +1,32 @@
 #!/usr/bin/env node
 /**
- * Pendiente de implementación.
+ * Genera el TRA (Ticket Request Access) para WSAA.
+ *
+ * Uso:
+ *   tsx src/bin/generate-tra.ts [-e <env>] [-s <servicio>] [-o <archivo>]
+ *   Default: servicio ARCA_SERVICE, salida certs/<env>/tra.xml
  */
+import { mkdir, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { parseArgs } from 'node:util'
+import { COMMON_OPTIONS, exitIfHelp, cliContext, runCli } from './common.js'
 
-const PLACEHOLDER = 'No implementado todavía'
+const USAGE = 'Uso: generate-tra [-e homologacion|produccion] [-s <servicio>] [-o <archivo>]'
 
-console.log('='.repeat(70))
-console.log(' generate-tra.ts — no implementado')
-console.log('='.repeat(70))
-console.log('')
-console.log(PLACEHOLDER)
-console.log('')
-console.log('El script original genera el archivo TRA (Ticket Request Access)')
-console.log('y lo guarda en certs/<env>/tra.xml. Scripts pendientes:')
-console.log('  - generate-tra.ts   (TRA)')
-console.log('  - sign-cms.ts       (firma CMS con OpenSSL)')
-console.log('  - submit-login.ts   (loginCms → TA)')
-console.log('  - wsfev1-dummy.ts   (conectividad)')
-console.log('  - wsfev1-params.ts  (parámetros WSFEv1)')
-console.log('  - pipeline.ts       (TRA→CMS→TA→Dummy→FEParamGet)')
-console.log('')
-process.exit(1)
-
-export {}
+runCli(async () => {
+  const { values } = parseArgs({
+    options: {
+      ...COMMON_OPTIONS,
+      service: { type: 'string', short: 's' },
+      out: { type: 'string', short: 'o' },
+    },
+    allowPositionals: true,
+  })
+  exitIfHelp(values.help, USAGE)
+  const ctx = cliContext(values.env)
+  const service = values.service ?? ctx.config.arcaService
+  const out = values.out ?? path.join(ctx.envDir, ctx.config.files.tra)
+  await mkdir(path.dirname(out), { recursive: true })
+  await writeFile(out, ctx.wsaa(service).buildTra(service), 'utf8')
+  console.log(`TRA para "${service}" (${ctx.arcaEnv}) guardado en ${out}`)
+})

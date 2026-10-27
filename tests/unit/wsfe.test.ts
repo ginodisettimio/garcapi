@@ -176,4 +176,33 @@ describe('WsfeClient', () => {
     expect(capturer.envelope).toContain('<Nro>100</Nro>')
     expect(capturer.envelope).toContain('<Cuit>20223565078</Cuit>')
   })
+
+  it('feDummy no manda Auth y parsea el estado de los servidores', async () => {
+    const capturer = new EnvelopeCapturer('<FEDummyResult><AppServer>OK</AppServer><DbServer>OK</DbServer><AuthServer>OK</AuthServer></FEDummyResult>')
+    const c = new WsfeClient(capturer, 'homologacion')
+    expect(await c.feDummy()).toEqual({ appServer: 'OK', dbServer: 'OK', authServer: 'OK' })
+    expect(capturer.action).toBe('FEDummy')
+    expect(capturer.envelope).not.toContain('<Auth>')
+  })
+
+  it('feParamGetPtosVenta parsea los puntos de venta', async () => {
+    const xml = '<ResultGet><PtoVenta><Nro>1</Nro><EmisionTipo>CAE - Ws</EmisionTipo><Bloqueado>N</Bloqueado><FchBaja>NULL</FchBaja></PtoVenta><PtoVenta><Nro>2</Nro><EmisionTipo>CAE - Ws</EmisionTipo><Bloqueado>S</Bloqueado><FchBaja>20240101</FchBaja></PtoVenta></ResultGet>'
+    const c = new WsfeClient(new MockSoapClient(xml), 'homologacion')
+    expect(await c.feParamGetPtosVenta(auth)).toEqual([
+      { nro: 1, emisionTipo: 'CAE - Ws', bloqueado: false, fchBaja: null },
+      { nro: 2, emisionTipo: 'CAE - Ws', bloqueado: true, fchBaja: '20240101' },
+    ])
+  })
+
+  it('feParamGetPtosVenta con error 602 (sin resultados) devuelve []', async () => {
+    const xml = '<Errors><Err><Code>602</Code><Msg>Sin Resultados</Msg></Err></Errors>'
+    const c = new WsfeClient(new MockSoapClient(xml), 'homologacion')
+    expect(await c.feParamGetPtosVenta(auth)).toEqual([])
+  })
+
+  it('feParamGetPtosVenta con otro error lanza WsfeError', async () => {
+    const xml = '<Errors><Err><Code>600</Code><Msg>ValidacionDeToken: No validaron las fechas del token</Msg></Err></Errors>'
+    const c = new WsfeClient(new MockSoapClient(xml), 'homologacion')
+    await expect(c.feParamGetPtosVenta(auth)).rejects.toMatchObject({ code: 'WSFE_ERRORES' })
+  })
 })

@@ -21,3 +21,9 @@ export function isArcaEnv(value: unknown): value is ArcaEnv {
 export type ArcaService = 'wsfe' | 'wsfev1' | 'wsmtxca' | 'ws_sr_padron_a13'
 
 export const DEFAULT_ARCA_SERVICE: ArcaService = 'wsfe'
+
+export const ARCA_SERVICES: readonly ArcaService[] = ['wsfe', 'wsfev1', 'wsmtxca', 'ws_sr_padron_a13'] as const
+
+export function isArcaService(value: unknown): value is ArcaService {
+  return (ARCA_SERVICES as readonly unknown[]).includes(value)
+}

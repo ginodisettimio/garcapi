@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validación con Zod (reglas de negocio AFIP)
 - Jerarquía de errores tipados
 - CLI scripts: `generate-tra`, `sign-cms`, `submit-login`, `pipeline`, `wsfev1-dummy`, `wsfev1-params`
+- `WsfeClient.feDummy()` y `WsfeClient.feParamGetPtosVenta()`
 - 10+ tests unitarios
 - 6 ejemplos
 - Dockerfile multi-stage

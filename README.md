@@ -219,25 +219,30 @@ const arca = createArca({
 
 ## 📜 Scripts CLI
 
+Todos aceptan `-e homologacion|produccion` (default `ARCA_ENV`) y `-h/--help`. Los paths por defecto salen de `CERTS_DIR` y `ARCA_*_FILE`.
+
 ```bash
-# Generar TRA
-tsx src/bin/generate-tra.ts -o ./tra.xml
-
-# Firmar TRA con CMS
-tsx src/bin/sign-cms.ts ./tra.xml ./cms.b64 --cert ./cert.crt --key ./private.key
-
-# Login completo (genera + firma + autentica)
-tsx src/bin/submit-login.ts -e homologacion
-
-# Pipeline completo
-tsx src/bin/pipeline.ts
-
-# Dummy FECompUltimoAutorizado
+# Conectividad con WSFEv1 (FEDummy, no requiere certs)
 tsx src/bin/wsfev1-dummy.ts
 
-# FEParamGetPtosVenta
+# Generar TRA → certs/<env>/tra.xml (-s <servicio>, -o <archivo>)
+tsx src/bin/generate-tra.ts
+
+# Firmar TRA con CMS (salida .der = binario, otra extensión = base64)
+tsx src/bin/sign-cms.ts ./tra.xml ./cms.der --cert ./cert.crt --key ./private.key
+
+# Login completo (TRA + firma + loginCms); reutiliza el TA vigente salvo --force
+tsx src/bin/submit-login.ts -e homologacion
+tsx src/bin/submit-login.ts -s ws_sr_padron_a13   # TA del Padrón A13
+
+# FEParamGetPtosVenta (CUIT de ARCA_CUIT o --cuit)
 tsx src/bin/wsfev1-params.ts
+
+# Chequeo completo: FEDummy → TA → FEParamGetPtosVenta → FECompUltimoAutorizado (no emite)
+tsx src/bin/pipeline.ts -p 1 -t 6
 ```
+
+Compilados, quedan como `arca-tra`, `arca-sign-cms`, `arca-submit-login`, `arca-wsfev1-dummy`, `arca-wsfev1-params` y `arca-pipeline`.
 
 ---
 
@@ -285,7 +290,7 @@ MIT © Tordini. Ver [LICENSE](LICENSE).
 
 ---
 
-## 🚧 Estado
+## ✅ Estado
 
 | Componente | Estado |
 |---|---|
@@ -297,4 +302,4 @@ MIT © Tordini. Ver [LICENSE](LICENSE).
 | Tests unitarios + E2E contra homologación | ✅ |
 | `PdfService` + `PuppeteerManager` (PDFs con QR AFIP) y templates | ✅ |
 | `CuitService` (Padrón A13) | ✅ |
-| Scripts CLI (salvo `server.ts`) | 🚧 pendiente |
+| Scripts CLI | ✅ |
