@@ -120,10 +120,12 @@ export class PuppeteerManager {
 }
 
 /**
- * Carga HTML en la página forzando charset UTF-8.
+ * Carga HTML en la página forzando charset UTF-8 y sin JavaScript: los templates no lo
+ * necesitan y así ningún dato del comprobante puede ejecutar código en el Chrome del server.
  */
 export async function setUtf8Content(page: Page, html: string): Promise<void> {
   const withCharset = /<meta[^>]+charset/i.test(html) ? html : `<meta charset="utf-8">${html}`
+  await page.setJavaScriptEnabled(false)
   await page.setContent(withCharset, { waitUntil: 'load' })
 }
 

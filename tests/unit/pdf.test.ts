@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
+import type { Page } from 'puppeteer'
 import { buildQrUrl } from '../../src/pdf/qr.js'
+import { setUtf8Content } from '../../src/pdf/puppeteer-manager.js'
 import { fillTemplate, renderFacturaHtml, renderPresupuestoHtml, renderTicketHtml, type FacturaPdfData } from '../../src/pdf/pdf-service.js'
 
 const facturaTemplate = readFileSync(new URL('../../src/pdf/templates/factura.html', import.meta.url), 'utf8')
@@ -166,5 +168,17 @@ describe('comprobante con CAEA', () => {
     expect(renderFacturaHtml(facturaTemplate, data, '')).toContain('CAEA N°:</b> 92026102000000')
     expect(renderTicketHtml(ticketTemplate, data, '')).toContain('CAEA: 92026102000000')
     expect(renderFacturaHtml(facturaTemplate, facturaB(), '')).toContain('CAE N°:</b> 86431024007837')
+  })
+})
+
+describe('setUtf8Content', () => {
+  it('deshabilita JavaScript antes de cargar el HTML y fuerza UTF-8', async () => {
+    const calls: string[] = []
+    const page = {
+      setJavaScriptEnabled: async (v: boolean) => void calls.push(`js:${v}`),
+      setContent: async (html: string) => void calls.push(`content:${html.slice(0, 22)}`),
+    }
+    await setUtf8Content(page as unknown as Page, '<p>hola</p>')
+    expect(calls).toEqual(['js:false', 'content:<meta charset="utf-8">'])
   })
 })
