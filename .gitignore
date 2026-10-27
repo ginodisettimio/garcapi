@@ -56,3 +56,7 @@ playwright-report/
 
 # Herramientas locales
 .impeccable/
+
+# TA y estado CAEA (ARCA_TA_DIR dentro del repo, o caea.json junto a los certs)
+ta/
+certs/**/*.json
