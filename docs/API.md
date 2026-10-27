@@ -23,7 +23,7 @@ Cómo consumir el servicio de facturación: endpoints, requests, respuestas y er
 | | |
 |---|---|
 | **Base URL** | La del server standalone (`node dist/bin/server.js` o `docker compose up`), por ejemplo `https://facturacion.example.com`. Si montás el router en tu propia app (`app.use('/api', createArcaRouter(...))`), las rutas quedan bajo ese prefijo: `/api/afip/...`. |
-| **Formato** | Requests y respuestas JSON (`Content-Type: application/json`), salvo el PDF de `POST /afip/facturas`. Body máximo: 5 MB. |
+| **Formato** | Requests y respuestas JSON (`Content-Type: application/json`), salvo el PDF de `POST /afip/facturas`. Body máximo: 1 MB (hasta 1000 ítems y 50 comprobantes asociados). |
 | **Entorno** | `ARCA_ENV=homologacion` (pruebas, sin validez fiscal) o `produccion`. `GET /health` informa cuál está activo. |
 | **Emisor** | Siempre es el configurado en el server (`ARCA_CUIT`, `ARCA_RAZON_SOCIAL`, …). El cliente solo manda el receptor y los ítems. |
 | **Importes** | Números en pesos (o en la moneda indicada) con hasta 2 decimales. `precioUnitario` es **neto, sin IVA**: el servicio calcula el IVA. |
@@ -39,7 +39,7 @@ Si el server tiene `ARCA_JWT_SECRET` (obligatorio en producción), todas las rut
 Authorization: Bearer <token>
 ```
 
-No hay endpoint de login. El backend del POS firma el token con el mismo secreto (HS256):
+No hay endpoint de login. El backend del POS firma el token con el mismo secreto, **solo HS256**:
 
 ```ts
 import jwt from 'jsonwebtoken'
@@ -47,7 +47,8 @@ import jwt from 'jsonwebtoken'
 const token = jwt.sign({ sub: 'pos-1' }, process.env.ARCA_JWT_SECRET!, { expiresIn: '12h' })
 ```
 
-Los claims `id`, `role` y `email` son opcionales; el servicio no los usa para autorizar.
+- Se rechazan los tokens firmados con otro algoritmo y los emitidos (claim `iat`, que `jwt.sign` agrega solo) hace más de `ARCA_JWT_EXPIRES_IN` (default `12h`), aunque su `exp` sea mayor.
+- Los claims `id`, `role` y `email` son opcionales; el servicio no los usa para autorizar.
 
 Sin token, o con un token inválido o vencido:
 
@@ -65,20 +66,19 @@ HTTP/1.1 401 Unauthorized
 
 ## Errores
 
-Todas las respuestas de error tienen `ok: false`, un mensaje en `error` y, salvo los 401, un `code` estable para que el cliente decida qué hacer.
+Todas las respuestas de error tienen `ok: false`, un mensaje en `error` y, salvo los 401, un `code` estable para que el cliente decida qué hacer. Los errores 5xx no incluyen detalles internos (rutas, stderr de OpenSSL): quedan en el log del server.
 
 | HTTP | `code` | Cuándo | Campos extra |
 |---|---|---|---|
-| 400 | _(sin code)_, `error: "validation_failed"` | El body no cumple el schema (tipos, campos obligatorios, reglas de ARCA) | `issues` |
-| 400 | `VALIDATION_ERROR` | Validaciones del servicio: consumidor final por monto, parámetros de URL | `issues` |
+| 400 | `VALIDATION_ERROR` | El body no cumple el schema (tipos, campos obligatorios, reglas de ARCA), el consumidor final por monto o parámetros de URL inválidos | `issues` |
 | 401 | — | Falta el JWT o es inválido | — |
 | 404 | `CUIT_NO_ENCONTRADO` | El CUIT no existe en el Padrón A13 | `details` |
 | 502 | `COMPROBANTE_RECHAZADO` | ARCA respondió y rechazó el comprobante | `afipErrors`, `afipObservations` |
 | 502 | `WSFE_FAULT` / `WSFE_ERRORES` | ARCA devolvió un error en la consulta (token, parámetros) | `afipErrors`, `faultcode`, `faultstring` |
-| 503 | `NETWORK_ERROR` | ARCA no responde (sin contingencia CAEA configurada) | `details` |
+| 503 | `NETWORK_ERROR` | ARCA no responde (sin contingencia CAEA configurada) | — |
 | 503 | `CAEA_NO_DISPONIBLE` | ARCA no responde y no hay CAEA para la quincena | `details` |
 | 504 | `CAE_RESULTADO_INCIERTO` | Se cortó la comunicación mientras ARCA procesaba el comprobante: **puede haber quedado autorizado** | `details.ptoVta`, `details.cbteTipo`, `details.nro` |
-| 500 | `WSAA_FAULT`, `CMS_SIGN_ERROR`, `OPENSSL_NOT_FOUND`, `CONFIG_ERROR`, `INTERNAL_ERROR`, … | Problemas de configuración o de autenticación con ARCA (certificado, servicio no autorizado) | `details` |
+| 500 | `WSAA_FAULT`, `CMS_SIGN_ERROR`, `OPENSSL_NOT_FOUND`, `CONFIG_ERROR`, `INTERNAL_ERROR`, … | Problemas de configuración o de autenticación con ARCA (certificado, servicio no autorizado). El detalle está en el log del server | — |
 
 `issues` es una lista de `{ path, message }`, donde `path` indica el campo:
 
@@ -86,6 +86,7 @@ Todas las respuestas de error tienen `ok: false`, un mensaje en `error` y, salvo
 {
   "ok": false,
   "error": "validation_failed",
+  "code": "VALIDATION_ERROR",
   "issues": [
     { "path": ["items", 0, "iva"], "message": "iva_invalido" },
     { "path": ["receptor", "docTipo"], "message": "docTipo_invalido_para_A" }
@@ -99,6 +100,7 @@ Qué hacer según el error:
 - **502 `COMPROBANTE_RECHAZADO`**: no se emitió nada. Revisar `afipErrors` y `afipObservations` (ver [ejemplo](#comprobante-rechazado)).
 - **503**: ARCA está caído. Se puede reintentar más tarde.
 - **504 `CAE_RESULTADO_INCIERTO`**: **no reintentar a ciegas**, porque se duplicaría la venta. Primero consultá [`GET /afip/comprobantes/:ptoVta/:tipo/:nro`](#get-afipcomprobantesptovtatiponro) con los datos de `details`. Si existe, ese es el comprobante emitido; si no, recién ahí reintentá.
+- **Sin respuesta** (timeout del cliente o del proxy, conexión cortada): es el mismo caso que el 504, porque el server pudo haber terminado la emisión. Antes de reintentar, compará [`GET /afip/comprobantes/ultimo`](#get-afipcomprobantesultimo) con el último número que tengas registrado.
 
 ---
 
@@ -174,6 +176,8 @@ Además de los tipos de cada campo, el servicio aplica estas reglas antes de lla
 | `condicion_iva_invalida_para_B` | En B, `condicionIVA` tiene que ser 4, 5, 7, 8, 9, 10 o 15. |
 | `condicion_iva_invalida_para_C` | En C se admite cualquiera de las anteriores (un monotributista le factura C también a un responsable inscripto). |
 | `cbtesAsoc_obligatorio_en_NC_y_ND` | Las notas de crédito y débito necesitan `cbtesAsoc`. |
+| `demasiados_items`, `demasiados_cbtesAsoc` | Más de 1000 ítems o de 50 comprobantes asociados. |
+| `ptoVta_es_de_contingencia` | El `ptoVta` es el de contingencia CAEA (`ARCA_CAEA_PTO_VTA`): no se usa para emitir con CAE. |
 | `fechas_servicio_obligatorias` | Con `concepto` 2 o 3 van `fchServDesde`, `fchServHasta` y `fchVtoPago`. |
 | `receptor_debe_identificarse_por_monto` | Consumidor final sin identificar (`docTipo` 99) con un total desde $10.000.000 (RG 5700/2025, configurable con `ARCA_MONTO_MAX_CF`): hay que mandar DNI, CUIL o CDI. Responde con `code: VALIDATION_ERROR`. |
 | `ptoVta_invalido`, `docNro_invalido`, `cbteTipo_invalido`, `moneda_invalida`, `cotizacion_invalida`, `fecha_formato_invalido_YYYYMMDD`, `items_obligatorios`, `cantidad_debe_ser_positiva`, … | Formato de cada campo (`ptoVta` entero positivo; `docNro` entero ≥ 0 o string de dígitos). |
@@ -354,6 +358,8 @@ curl -X POST https://facturacion.example.com/afip/facturas \
 #### Concurrencia
 
 Las emisiones se procesan **de a una por proceso**: pedir número y autorizar van juntos para que dos ventas simultáneas no tomen el mismo número. Cada emisión tarda lo que tarda ARCA, normalmente menos de un segundo. Corré **una sola instancia** del server por punto de venta.
+
+**Timeouts**: cada llamada a ARCA tiene un timeout de 30 s y una emisión hace hasta tres (login, número, CAE). Configurá el cliente y el reverse proxy con **al menos 100 s** para no cortar una emisión que ARCA sí va a completar.
 
 ---
 

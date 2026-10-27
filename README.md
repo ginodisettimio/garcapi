@@ -4,7 +4,7 @@
 
 `createArca()` te da, en una sola llamada, todo el stack listo para emitir facturas electrónicas: autenticación automática con ARCA (con renovación y caché del TA), cliente SOAP tipado, generación de PDFs con código QR AFIP, validación con Zod, y errores tipados.
 
-Pensado para embeber en cualquier backend Node.js ≥ 20, sin acoplarte a ningún framework.
+Pensado para embeber en cualquier backend Node.js ≥ 22.12, sin acoplarte a ningún framework.
 
 ---
 
@@ -26,7 +26,7 @@ Pensado para embeber en cualquier backend Node.js ≥ 20, sin acoplarte a ningú
 
 ```bash
 # Requisitos
-# • Node.js >= 20
+# • Node.js >= 22.12
 # • OpenSSL >= 1.1 (casi siempre ya instalado)
 # • Certs .crt + .key de AFIP (homologación o producción)
 
@@ -98,10 +98,8 @@ await arca.close()
 | `ARCA_HTTP_HOST` | `0.0.0.0` | Host del server standalone |
 | `ARCA_HTTP_PORT` | `3001` | Puerto del server standalone |
 | `ARCA_CORS_ORIGINS` | `*` | Lista separada por comas. `*` para todos |
-| `ARCA_RATE_LIMIT_WINDOW_MS` | `60000` | Ventana del rate limit HTTP (ms) |
-| `ARCA_RATE_LIMIT_MAX` | `100` | Requests por ventana |
 | `ARCA_JWT_SECRET` | _(vacío)_ | Si se setea, las rutas HTTP piden Bearer token |
-| `ARCA_JWT_EXPIRES_IN` | `12h` | Vencimiento de los JWT emitidos |
+| `ARCA_JWT_EXPIRES_IN` | `12h` | Antigüedad máxima aceptada de un JWT (claim `iat`): los más viejos se rechazan |
 | `ARCA_PUPPETEER_EXECUTABLE_PATH` | _(auto)_ | Ruta al binario de Chrome/Chromium |
 | `ARCA_PUPPETEER_CONCURRENCY` | `2` | PDFs renderizados en simultáneo |
 | `ARCA_PUPPETEER_MAX_USOS` | `100` | Reiniciar browser cada N usos |
@@ -308,11 +306,12 @@ docker compose up -d --build
     reverse_proxy 127.0.0.1:3001
   }
   ```
-- **Auth**: en producción el server no arranca sin `ARCA_JWT_SECRET`. No hay endpoint de login: el backend del POS firma un JWT HS256 con ese secreto y lo manda como `Authorization: Bearer <token>`:
+- **Auth**: en producción el server no arranca sin `ARCA_JWT_SECRET` (mínimo 32 caracteres: `openssl rand -hex 32`). No hay endpoint de login: el backend del POS firma un JWT HS256 con ese secreto y lo manda como `Authorization: Bearer <token>`:
   ```ts
   jwt.sign({ sub: 'pos-1' }, process.env.ARCA_JWT_SECRET, { expiresIn: '12h' })
   ```
 - **CORS**: `ARCA_CORS_ORIGINS` con el origen exacto del POS (ej. `https://pos.example.com`), nunca `*`.
+- **Rate limit y timeouts en el proxy**: el server no limita requests; hacelo en el reverse proxy. Dale al proxy un timeout de lectura de al menos 100 s (una emisión puede hacer tres llamadas a ARCA de hasta 30 s cada una).
 - **Una sola réplica**: las emisiones se serializan dentro del proceso para no pedir dos veces el mismo número. Con varias réplicas emitiendo en el mismo punto de venta hace falta un lock distribuido (no incluido), o un punto de venta por réplica.
 
 Sin compose: `docker build -t garcapi . && docker run --env-file .env -p 127.0.0.1:3001:3001 -v $(pwd)/certs:/app/certs:ro -v arca-ta:/app/ta garcapi`.

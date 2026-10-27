@@ -35,3 +35,16 @@ comprobante se emite con CAEA y se informa después.
 ```bash
 ARCA_CUIT=<tu cuit> ARCA_CAEA_PTO_VTA=<pto vta CAEA> npm run test:integration
 ```
+
+`http.test.ts` recorre la API HTTP como un POS: auth, emisión con PDF y headers
+`X-Arca-*`, consulta, validaciones y CORS. Levanta el server en el proceso, o
+prueba un deploy ya levantado (por ejemplo Docker):
+
+```bash
+ARCA_CUIT=<tu cuit> npm run test:integration                         # server en proceso
+ARCA_E2E_URL=http://127.0.0.1:3001 ARCA_E2E_JWT_SECRET=<secreto> \
+  npx vitest run tests/integration/http.test.ts                       # deploy existente
+```
+
+`tls.test.ts` llama a `FEDummy` de homologación y de producción (no necesita
+certificados): detecta problemas de TLS con los servidores de ARCA.
