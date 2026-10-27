@@ -1,3 +1,5 @@
+import https from 'node:https'
+import tls from 'node:tls'
 import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
 import { NetworkError } from '../domain/errors.js'
 
@@ -22,12 +24,20 @@ export interface SoapClient {
 
 const DEFAULT_TIMEOUT_MS = 30_000
 
+/**
+ * Agente HTTPS para ARCA: solo intercambio de claves ECDHE.
+ * - servicios1.afip.gov.ar (WSFE producción) prefiere DHE con una clave que OpenSSL 3
+ *   rechaza ("dh key too small"); sin DHE ni RSA estático todos los hosts negocian ECDHE (con PFS).
+ * - Sin keep-alive: reusar un socket que ARCA ya cerró cortaría FECAESolicitar a mitad de camino.
+ */
+const ARCA_HTTPS_AGENT = new https.Agent({ ciphers: `${tls.DEFAULT_CIPHERS}:!kDHE:!kRSA`, keepAlive: false })
+
 /** Cliente HTTP SOAP por defecto, basado en axios. */
 export class AxiosSoapClient implements SoapClient {
   private readonly http: AxiosInstance
 
   constructor(defaults: AxiosRequestConfig = {}) {
-    this.http = axios.create(defaults)
+    this.http = axios.create({ httpsAgent: ARCA_HTTPS_AGENT, ...defaults })
   }
 
   async post(args: SoapPostArgs): Promise<string> {
