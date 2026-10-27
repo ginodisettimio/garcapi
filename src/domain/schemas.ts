@@ -32,6 +32,23 @@ export const ComprobanteAsociadoSchema = z.object({
   cuit: z.number().int().positive().optional(),
 })
 
+/** Máximo de ítems por comprobante (los ítems no viajan a ARCA: solo limitan el tamaño del request). */
+export const MAX_ITEMS = 1000
+/** Máximo de comprobantes asociados por nota de crédito/débito. */
+export const MAX_CBTES_ASOC = 50
+
+/**
+ * Array con tope de largo verificado ANTES de validar cada elemento, con un issue `fatal`
+ * para que zod aborte (ni elementos ni superRefine): zod acumula un issue por elemento
+ * inválido sin límite y un array enorme agota la memoria (GHSA-mrhx-c7xc-m3w5).
+ */
+function arrayAcotado<T extends z.ZodTypeAny>(schema: T, max: number, message: string) {
+  return z.preprocess((v, ctx) => {
+    if (Array.isArray(v) && v.length > max) ctx.addIssue({ code: z.ZodIssueCode.custom, message, fatal: true })
+    return v
+  }, schema)
+}
+
 export const EmitirComprobanteRequestSchema = z
   .object({
     ptoVta: z.number().int().positive({ message: 'ptoVta_invalido' }),
@@ -61,7 +78,7 @@ export const EmitirComprobanteRequestSchema = z
       razonSocial: z.string().min(1),
       domicilio: z.string().optional(),
     }),
-    items: z.array(ItemSchema).min(1, { message: 'items_obligatorios' }),
+    items: arrayAcotado(z.array(ItemSchema).min(1, { message: 'items_obligatorios' }), MAX_ITEMS, 'demasiados_items'),
     moneda: z
       .string()
       .refine((v) => Object.values(MONEDA).includes(v as Moneda), {
@@ -74,7 +91,7 @@ export const EmitirComprobanteRequestSchema = z
       .refine((v) => v > 0, { message: 'cotizacion_invalida' })
       .optional()
       .default(1),
-    cbtesAsoc: z.array(ComprobanteAsociadoSchema).optional(),
+    cbtesAsoc: arrayAcotado(z.array(ComprobanteAsociadoSchema), MAX_CBTES_ASOC, 'demasiados_cbtesAsoc').optional(),
     fchServDesde: z
       .string()
       .regex(/^\d{8}$/, { message: 'fchServDesde_formato_invalido' })

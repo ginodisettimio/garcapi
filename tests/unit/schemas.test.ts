@@ -271,4 +271,23 @@ describe('EmitirComprobanteRequestSchema', () => {
     expect(r.success).toBe(false)
     if (!r.success) expect(r.error.issues[0]!.message).toBe('ptoVta_invalido')
   })
+
+  it('array enorme de ítems inválidos: un solo issue, sin validar cada elemento (GHSA-mrhx-c7xc-m3w5)', () => {
+    const t0 = Date.now()
+    const r = EmitirComprobanteRequestSchema.safeParse(
+      validInput({ items: Array.from({ length: 200_000 }, (_, i) => (i % 2 ? {} : null)) }),
+    )
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues).toEqual([expect.objectContaining({ path: ['items'], message: 'demasiados_items' })])
+    expect(Date.now() - t0).toBeLessThan(2000)
+  })
+
+  it('hasta MAX_ITEMS se validan normalmente, con el path de cada ítem', () => {
+    const items = Array.from({ length: 1000 }, () => ({ descripcion: 'x', cantidad: 1, precioUnitario: 1, iva: 21 }))
+    items[500] = { descripcion: 'x', cantidad: 1, precioUnitario: 1, iva: 4 }
+    const r = EmitirComprobanteRequestSchema.safeParse(validInput({ items }))
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues.map((i) => i.path)).toContainEqual(['items', 500, 'iva'])
+    expect(EmitirComprobanteRequestSchema.safeParse(validInput({ items: [] })).success).toBe(false)
+  })
 })

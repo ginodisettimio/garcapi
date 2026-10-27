@@ -26,7 +26,7 @@ export function createArcaServer(deps: ArcaServerDeps): Express {
     new ConsoleLogger((deps.config.logLevel ?? 'info') as LogLevel)
 
   // Body parsing
-  app.use(express.json({ limit: '5mb' }))
+  app.use(express.json({ limit: '1mb' }))
   app.use(express.urlencoded({ extended: true }))
 
   // CORS — opcional
