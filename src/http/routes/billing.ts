@@ -31,6 +31,14 @@ export function createBillingRoutes(deps: BillingRoutesDeps) {
         if (result.pdfBuffer && sendPdf) {
           res.setHeader('Content-Type', 'application/pdf')
           res.setHeader('Content-Disposition', `attachment; filename=${result.fileName}`)
+          res.setHeader('X-Arca-Cae', result.cae)
+          res.setHeader('X-Arca-Cae-Vto', result.vtoCae)
+          res.setHeader('X-Arca-Pto-Vta', String(result.ptoVta))
+          res.setHeader('X-Arca-Nro-Comprobante', String(result.nroComprobante))
+          res.setHeader('X-Arca-Cbte-Tipo', String(result.cbteTipo))
+          res.setHeader('X-Arca-Importe-Total', String(result.importeTotal))
+          res.setHeader('X-Arca-Tipo-Autorizacion', result.tipoAutorizacion ?? 'CAE')
+          res.setHeader('X-Arca-Pendiente-Informar', String(result.pendienteInformar ?? false))
           res.send(result.pdfBuffer)
         } else {
           res.json({
@@ -42,6 +50,8 @@ export function createBillingRoutes(deps: BillingRoutesDeps) {
             ptoVta: result.ptoVta,
             importeTotal: result.importeTotal,
             fileName: result.fileName,
+            tipoAutorizacion: result.tipoAutorizacion ?? 'CAE',
+            pendienteInformar: result.pendienteInformar ?? false,
             pdfBase64: result.pdfBuffer?.toString('base64') ?? null,
             xml: result.xml,
           })

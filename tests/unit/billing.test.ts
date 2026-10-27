@@ -1,5 +1,8 @@
+import express from 'express'
+import request from 'supertest'
 import { describe, it, expect } from 'vitest'
 import { BillingService } from '../../src/services/billing-service.js'
+import { createBillingRoutes } from '../../src/http/routes/billing.js'
 import { WsaaClient } from '../../src/core/wsaa.js'
 import { WsfeClient } from '../../src/core/wsfe.js'
 import { MemoryTaStorage } from '../../src/core/storage.js'
@@ -159,6 +162,45 @@ describe('BillingService.emitir', () => {
       await expect(bajo.billing.emitir(facturaB)).rejects.toBeInstanceOf(ValidationError)
       const off = await makeService(CAE_OK, undefined, 0)
       await expect(off.billing.emitir(conTotal(50_000_000))).resolves.toMatchObject({ cae: '74123456789012' })
+    })
+  })
+})
+
+describe('POST /afip/facturas (HTTP)', () => {
+  const pdf: PdfGenerator = {
+    generateFacturaPdf: async () => Buffer.from('%PDF-1.4 fake'),
+    generatePresupuestoPdf: async () => Buffer.from(''),
+  }
+  const app = async (sendPdfAsBinary?: boolean) => {
+    const { billing } = await makeService(CAE_OK, pdf)
+    const a = express()
+    a.use(express.json())
+    a.use(createBillingRoutes({ billing, auth: (_q, _r, next) => next(), sendPdfAsBinary }))
+    return a
+  }
+
+  it('con PDF binario manda los datos del comprobante en headers X-Arca-*', async () => {
+    const res = await request(await app()).post('/facturas').send(facturaB)
+    expect(res.status).toBe(200)
+    expect(res.headers['content-type']).toBe('application/pdf')
+    expect(res.headers['content-disposition']).toBe('attachment; filename=F_B_00001-00000042.pdf')
+    expect(res.headers['x-arca-cae']).toBe('74123456789012')
+    expect(res.headers['x-arca-cae-vto']).toBe('20240115')
+    expect(res.headers['x-arca-nro-comprobante']).toBe('42')
+    expect(res.headers['x-arca-pto-vta']).toBe('1')
+    expect(res.headers['x-arca-tipo-autorizacion']).toBe('CAE')
+    expect(res.headers['x-arca-pendiente-informar']).toBe('false')
+  })
+
+  it('en JSON incluye tipoAutorizacion, pendienteInformar y el PDF en base64', async () => {
+    const res = await request(await app(false)).post('/facturas').send(facturaB)
+    expect(res.body).toMatchObject({
+      ok: true,
+      cae: '74123456789012',
+      nroComprobante: 42,
+      tipoAutorizacion: 'CAE',
+      pendienteInformar: false,
+      pdfBase64: Buffer.from('%PDF-1.4 fake').toString('base64'),
     })
   })
 })

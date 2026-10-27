@@ -35,6 +35,7 @@ describe('createArcaServer: CORS y auth', () => {
     expect(ok.status).toBe(204)
     expect(ok.headers['access-control-allow-origin']).toBe('https://pos.example.com')
     expect(ok.headers['vary']).toBe('Origin')
+    expect(ok.headers['access-control-expose-headers']).toContain('X-Arca-Cae')
 
     const otro = await request(app).options('/afip/facturas').set('Origin', 'https://evil.example')
     expect(otro.headers['access-control-allow-origin']).toBeUndefined()

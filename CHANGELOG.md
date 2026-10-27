@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `NETWORK_ERROR` responde HTTP 503 (antes 500)
 
 ### Fixed
+- `POST /afip/facturas` con PDF binario no devolvía CAE, número ni vencimiento: ahora van en headers `X-Arca-*` (expuestos por CORS); la respuesta JSON incluye `tipoAutorizacion` y `pendienteInformar`
 - `docker-compose.yml`: montaba dos volúmenes en `/app/certs` (y en solo lectura, sin poder escribir el TA), usaba `ARCA_HTTP_CORS_ORIGINS` en vez de `ARCA_CORS_ORIGINS` y no pasaba los datos del emisor que exige el server
 - CORS con origen limitado responde con `Vary: Origin`
 - `items[].iva` se interpreta siempre como porcentaje. Antes `iva: 5` se tomaba como el Id 5 de ARCA y se facturaba al 21 % (lo mismo con 4, 6, 8 y 9). **Cambio de comportamiento:** los Ids de ARCA ya no se aceptan como `iva` y `mapAlicuota` lanza `ValidationError` ante una alícuota desconocida en vez de devolver 0 %.

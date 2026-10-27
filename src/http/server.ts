@@ -34,6 +34,10 @@ export function createArcaServer(deps: ArcaServerDeps): Express {
         if (!origins.includes('*')) res.setHeader('Vary', 'Origin')
         res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        res.setHeader(
+          'Access-Control-Expose-Headers',
+          'Content-Disposition, X-Arca-Cae, X-Arca-Cae-Vto, X-Arca-Pto-Vta, X-Arca-Nro-Comprobante, X-Arca-Cbte-Tipo, X-Arca-Importe-Total, X-Arca-Tipo-Autorizacion, X-Arca-Pendiente-Informar',
+        )
       }
       if (req.method === 'OPTIONS') {
         res.status(204).end()
