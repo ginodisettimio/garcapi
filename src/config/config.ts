@@ -74,6 +74,22 @@ export interface ArcaConfig {
 
 let cachedConfig: ArcaConfig | null = null
 
+/** Lee un número de una variable de entorno; si no es válido lanza `ConfigError` en vez de propagar `NaN`. */
+function numeroEnv(
+  nombre: string,
+  raw: string | undefined,
+  porDefecto: number,
+  { min = 0, entero = false }: { min?: number; entero?: boolean } = {},
+): number {
+  const s = (raw ?? '').toString().trim()
+  if (s === '') return porDefecto
+  const n = Number(s)
+  if (!Number.isFinite(n) || n < min || (entero && !Number.isInteger(n))) {
+    throw new ConfigError(`${nombre} inválido: "${s}"`)
+  }
+  return n
+}
+
 /**
  * Carga y normaliza la configuración desde variables de entorno.
  *
@@ -151,12 +167,12 @@ export function loadConfig(options: {
       cms: (env.ARCA_CMS_FILE ?? 'cms.der').toString(),
     },
     http: {
-      port: Number(env.ARCA_HTTP_PORT ?? 3001),
+      port: numeroEnv('ARCA_HTTP_PORT', env.ARCA_HTTP_PORT, 3001, { entero: true }),
       host: (env.ARCA_HTTP_HOST ?? '0.0.0.0').toString(),
       corsOrigins,
       rateLimit: {
-        windowMs: Number(env.ARCA_RATE_LIMIT_WINDOW_MS ?? 60_000),
-        max: Number(env.ARCA_RATE_LIMIT_MAX ?? 100),
+        windowMs: numeroEnv('ARCA_RATE_LIMIT_WINDOW_MS', env.ARCA_RATE_LIMIT_WINDOW_MS, 60_000, { min: 1, entero: true }),
+        max: numeroEnv('ARCA_RATE_LIMIT_MAX', env.ARCA_RATE_LIMIT_MAX, 100, { min: 1, entero: true }),
       },
       jwt: {
         secret: (env.ARCA_JWT_SECRET ?? '').toString().trim() || null,
@@ -165,8 +181,8 @@ export function loadConfig(options: {
     },
     puppeteer: {
       executablePath: (env.ARCA_PUPPETEER_EXECUTABLE_PATH ?? '').toString().trim() || null,
-      concurrency: Number(env.ARCA_PUPPETEER_CONCURRENCY ?? 2),
-      maxUsos: Number(env.ARCA_PUPPETEER_MAX_USOS ?? 100),
+      concurrency: numeroEnv('ARCA_PUPPETEER_CONCURRENCY', env.ARCA_PUPPETEER_CONCURRENCY, 2, { min: 1, entero: true }),
+      maxUsos: numeroEnv('ARCA_PUPPETEER_MAX_USOS', env.ARCA_PUPPETEER_MAX_USOS, 100, { min: 1, entero: true }),
     },
     templates: {
       factura: (env.ARCA_TEMPLATE_FACTURA ?? '').toString().trim() || null,
@@ -175,11 +191,13 @@ export function loadConfig(options: {
     },
     pdf: {
       formato: pdfFormato,
-      anchoTicketMm: Number(env.ARCA_PDF_TICKET_MM ?? 80),
+      anchoTicketMm: numeroEnv('ARCA_PDF_TICKET_MM', env.ARCA_PDF_TICKET_MM, 80, { min: 1 }),
     },
-    montoMaxConsumidorFinal: Number(env.ARCA_MONTO_MAX_CF ?? MONTO_MAX_CONSUMIDOR_FINAL),
+    montoMaxConsumidorFinal: numeroEnv('ARCA_MONTO_MAX_CF', env.ARCA_MONTO_MAX_CF, MONTO_MAX_CONSUMIDOR_FINAL),
     contingencia: {
-      ptoVta: (env.ARCA_CAEA_PTO_VTA ?? '').toString().trim() ? Number(env.ARCA_CAEA_PTO_VTA) : null,
+      ptoVta: (env.ARCA_CAEA_PTO_VTA ?? '').toString().trim()
+        ? numeroEnv('ARCA_CAEA_PTO_VTA', env.ARCA_CAEA_PTO_VTA, 0, { min: 1, entero: true })
+        : null,
     },
     logLevel: ((env.ARCA_LOG_LEVEL ?? 'info').toString() as LogLevel),
   }

@@ -77,4 +77,20 @@ describe('loadConfig', () => {
     const b = loadConfig({ cwd: workdir, reload: true, overrides: { ARCA_HTTP_PORT: '2222' } })
     expect(b.http.port).toBe(2222)
   })
+
+  it('números inválidos en env lanzan ConfigError en vez de NaN (no apagan validaciones en silencio)', () => {
+    for (const overrides of [
+      { ARCA_MONTO_MAX_CF: 'diez millones' },
+      { ARCA_CAEA_PTO_VTA: 'x' },
+      { ARCA_CAEA_PTO_VTA: '0' },
+      { ARCA_PDF_TICKET_MM: '-5' },
+      { ARCA_HTTP_PORT: '12.5' },
+      { ARCA_PUPPETEER_CONCURRENCY: '0' },
+    ]) {
+      resetConfigCache()
+      expect(() => loadConfig({ cwd: workdir, overrides }), JSON.stringify(overrides)).toThrow(/inválido/)
+    }
+    resetConfigCache()
+    expect(loadConfig({ cwd: workdir, overrides: { ARCA_CAEA_PTO_VTA: ' 9 ' } }).contingencia.ptoVta).toBe(9)
+  })
 })
