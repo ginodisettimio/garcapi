@@ -98,6 +98,7 @@ export type DocTipo = (typeof DOC_TIPO)[keyof typeof DOC_TIPO]
  * - 10: IVA Liberado — Ley Nº 19.640
  * - 13: Monotributista Social
  * - 15: IVA No Alcanzado
+ * - 16: Monotributo Trabajador Independiente Promovido
  */
 export const CONDICION_IVA = {
   RESPONSABLE_INSCRIPTO: 1,
@@ -111,6 +112,7 @@ export const CONDICION_IVA = {
   IVA_LIBERADO_LEY_19640: 10,
   MONOTRIBUTO_SOCIAL: 13,
   IVA_NO_ALCANZADO: 15,
+  MONOTRIBUTO_TRABAJADOR_INDEPENDIENTE_PROMOVIDO: 16,
 } as const
 
 export type CondicionIva = (typeof CONDICION_IVA)[keyof typeof CONDICION_IVA]
@@ -131,15 +133,21 @@ export const CONDICION_IVA_LABELS: Record<number, string> = {
   10: 'IVA Liberado — Ley Nº 19.640',
   13: 'Monotributo Social',
   15: 'IVA No Alcanzado',
+  16: 'Monotributo Trabajador Independiente Promovido',
 }
 
 /**
- * Condiciones IVA válidas según tipo de comprobante (RG-4291).
- * - Para Factura A / ND A / NC A: solo 1, 6, 13
- * - Para Factura B/C, ND B/C, NC B/C: 5, 4, 7, 8, 9, 10, 15
+ * Condiciones IVA del receptor admitidas por clase de comprobante
+ * (FEParamGetCondicionIvaReceptor, RG 5616):
+ * - A: 1, 6, 13, 16
+ * - B: 4, 5, 7, 8, 9, 10, 15
+ * - C: todas (un monotributista le factura C también a un responsable inscripto)
  */
-export const CONDICIONES_IVA_PARA_A: readonly CondicionIva[] = [1, 6, 13]
-export const CONDICIONES_IVA_PARA_BC: readonly CondicionIva[] = [4, 5, 7, 8, 9, 10, 15]
+export const CONDICIONES_IVA_PARA_A: readonly CondicionIva[] = [1, 6, 13, 16]
+export const CONDICIONES_IVA_PARA_B: readonly CondicionIva[] = [4, 5, 7, 8, 9, 10, 15]
+export const CONDICIONES_IVA_PARA_C: readonly CondicionIva[] = [...CONDICIONES_IVA_PARA_A, ...CONDICIONES_IVA_PARA_B]
+/** @deprecated Usar `CONDICIONES_IVA_PARA_B` (la clase C admite además las de A). */
+export const CONDICIONES_IVA_PARA_BC = CONDICIONES_IVA_PARA_B
 
 /**
  * Concepto del comprobante.

@@ -206,4 +206,69 @@ describe('EmitirComprobanteRequestSchema', () => {
     )
     expect(r.success).toBe(true)
   })
+
+  describe('condición IVA del receptor por clase (FEParamGetCondicionIvaReceptor)', () => {
+    const conReceptor = (cbteTipo: number, receptor: object, extra: object = {}) =>
+      EmitirComprobanteRequestSchema.safeParse(validInput({ cbteTipo, receptor, ...extra }))
+    const messages = (r: ReturnType<typeof conReceptor>) => (r.success ? [] : r.error.issues.map((i) => i.message))
+    const itemsC = { items: [{ descripcion: 'x', cantidad: 1, precioUnitario: 100, iva: 0 }] }
+
+    it('Factura C a un Responsable Inscripto (monotributista que le factura a un RI)', () => {
+      const r = conReceptor(11, { docTipo: 80, docNro: 20111111112, condicionIVA: 1, razonSocial: 'RI S.A.' }, itemsC)
+      expect(r.success).toBe(true)
+    })
+
+    it('Factura C a consumidor final y a monotributista', () => {
+      expect(conReceptor(11, { docTipo: 99, docNro: 0, condicionIVA: 5, razonSocial: 'CF' }, itemsC).success).toBe(true)
+      expect(conReceptor(11, { docTipo: 80, docNro: 20111111112, condicionIVA: 6, razonSocial: 'Mono' }, itemsC).success).toBe(true)
+    })
+
+    it('Factura A a Monotributo Trabajador Independiente Promovido (16)', () => {
+      const r = conReceptor(1, { docTipo: 80, docNro: 20111111112, condicionIVA: 16, razonSocial: 'x' })
+      expect(r.success).toBe(true)
+    })
+
+    it('rechaza condiciones que la clase no admite', () => {
+      expect(messages(conReceptor(6, { docTipo: 80, docNro: 20111111112, condicionIVA: 1, razonSocial: 'x' }))).toContain(
+        'condicion_iva_invalida_para_B',
+      )
+      expect(messages(conReceptor(11, { docTipo: 80, docNro: 20111111112, condicionIVA: 2, razonSocial: 'x' }, itemsC))).toContain(
+        'condicion_iva_invalida_para_C',
+      )
+      expect(messages(conReceptor(1, { docTipo: 80, docNro: 20111111112, condicionIVA: 5, razonSocial: 'x' }))).toContain(
+        'condicion_iva_invalida_para_A',
+      )
+    })
+  })
+
+  it('NC B a consumidor final también exige docNro 0', () => {
+    const r = EmitirComprobanteRequestSchema.safeParse(
+      validInput({
+        cbteTipo: 8,
+        receptor: { docTipo: 99, docNro: 5, condicionIVA: 5, razonSocial: 'CF' },
+        cbtesAsoc: [{ tipo: 6, ptoVta: 1, nro: 1 }],
+      }),
+    )
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues.map((i) => i.message)).toContain('docNro_debe_ser_0_para_docTipo_99_en_B')
+  })
+
+  it('docNro: acepta número o string de dígitos; rechaza texto, negativos y decimales', () => {
+    const conDoc = (docNro: unknown) =>
+      EmitirComprobanteRequestSchema.safeParse(
+        validInput({ receptor: { docTipo: 96, docNro, condicionIVA: 5, razonSocial: 'x' } }),
+      )
+    const ok = conDoc('30123456')
+    expect(ok.success && ok.data.receptor.docNro).toBe(30123456)
+    for (const malo of ['abc', '12a', -1, 1.5, '']) {
+      const r = conDoc(malo)
+      expect(r.success, String(malo)).toBe(false)
+    }
+  })
+
+  it('ptoVta tiene que ser un entero positivo', () => {
+    const r = EmitirComprobanteRequestSchema.safeParse(validInput({ ptoVta: 0 }))
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues[0]!.message).toBe('ptoVta_invalido')
+  })
 })

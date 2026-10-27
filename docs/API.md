@@ -169,13 +169,14 @@ Además de los tipos de cada campo, el servicio aplica estas reglas antes de lla
 | `iva_obligatorio_en_A_y_B` | En A y B al menos un ítem tiene que tener IVA > 0. |
 | `iva_no_debe_discriminarse_en_C` | En C todos los ítems van con `iva: 0`. |
 | `docTipo_invalido_para_A` | La factura A no admite consumidor final (`docTipo` 99). |
-| `docNro_debe_ser_0_para_docTipo_99_en_B` | Factura B a consumidor final: `docNro` 0. |
-| `condicion_iva_invalida_para_A` | En A, `condicionIVA` tiene que ser 1, 6 o 13. |
-| `condicion_iva_invalida_para_BC` | En B y C, `condicionIVA` tiene que ser 4, 5, 7, 8, 9, 10 o 15. |
+| `docNro_debe_ser_0_para_docTipo_99_en_B` | Factura, nota de crédito o débito B a consumidor final: `docNro` 0. |
+| `condicion_iva_invalida_para_A` | En A, `condicionIVA` tiene que ser 1, 6, 13 o 16. |
+| `condicion_iva_invalida_para_B` | En B, `condicionIVA` tiene que ser 4, 5, 7, 8, 9, 10 o 15. |
+| `condicion_iva_invalida_para_C` | En C se admite cualquiera de las anteriores (un monotributista le factura C también a un responsable inscripto). |
 | `cbtesAsoc_obligatorio_en_NC_y_ND` | Las notas de crédito y débito necesitan `cbtesAsoc`. |
 | `fechas_servicio_obligatorias` | Con `concepto` 2 o 3 van `fchServDesde`, `fchServHasta` y `fchVtoPago`. |
 | `receptor_debe_identificarse_por_monto` | Consumidor final sin identificar (`docTipo` 99) con un total desde $10.000.000 (RG 5700/2025, configurable con `ARCA_MONTO_MAX_CF`): hay que mandar DNI, CUIL o CDI. Responde con `code: VALIDATION_ERROR`. |
-| `cbteTipo_invalido`, `moneda_invalida`, `cotizacion_invalida`, `fecha_formato_invalido_YYYYMMDD`, `items_obligatorios`, `cantidad_debe_ser_positiva`, … | Formato de cada campo. |
+| `ptoVta_invalido`, `docNro_invalido`, `cbteTipo_invalido`, `moneda_invalida`, `cotizacion_invalida`, `fecha_formato_invalido_YYYYMMDD`, `items_obligatorios`, `cantidad_debe_ser_positiva`, … | Formato de cada campo (`ptoVta` entero positivo; `docNro` entero ≥ 0 o string de dígitos). |
 
 #### Ejemplos de request
 
@@ -491,9 +492,10 @@ Cuál emitir:
 
 | `condicionIVA` | Condición | Letra |
 |---|---|---|
-| 1 | Responsable Inscripto | A |
-| 6 | Monotributo | A |
-| 13 | Monotributo Social | A |
+| 1 | Responsable Inscripto | A / C |
+| 6 | Monotributo | A / C |
+| 13 | Monotributo Social | A / C |
+| 16 | Monotributo Trabajador Independiente Promovido | A / C |
 | 4 | IVA Sujeto Exento | B / C |
 | 5 | Consumidor Final | B / C |
 | 7 | Sujeto No Categorizado | B / C |
@@ -501,6 +503,8 @@ Cuál emitir:
 | 9 | Cliente del Exterior | B / C |
 | 10 | IVA Liberado – Ley 19.640 | B / C |
 | 15 | IVA No Alcanzado | B / C |
+
+Fuente: `FEParamGetCondicionIvaReceptor` de ARCA.
 
 ### Alícuotas de IVA
 

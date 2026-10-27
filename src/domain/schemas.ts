@@ -2,7 +2,8 @@ import { z } from 'zod'
 import {
   CBTE_TIPOS,
   CONDICIONES_IVA_PARA_A,
-  CONDICIONES_IVA_PARA_BC,
+  CONDICIONES_IVA_PARA_B,
+  CONDICIONES_IVA_PARA_C,
   CONCEPTO,
   DOC_TIPO,
   MONEDA,
@@ -26,14 +27,14 @@ export const ItemSchema = z.object({
 
 export const ComprobanteAsociadoSchema = z.object({
   tipo: z.number().int().positive(),
-  ptoVta: z.number().int().nonnegative(),
+  ptoVta: z.number().int().positive(),
   nro: z.number().int().positive(),
   cuit: z.number().int().positive().optional(),
 })
 
 export const EmitirComprobanteRequestSchema = z
   .object({
-    ptoVta: z.number().int().nonnegative(),
+    ptoVta: z.number().int().positive({ message: 'ptoVta_invalido' }),
     cbteTipo: z.number().int().refine((v) => CBTE_TIPOS.includes(v as CbteTipo), {
       message: 'cbteTipo_invalido',
     }),
@@ -50,7 +51,12 @@ export const EmitirComprobanteRequestSchema = z
       .optional(),
     receptor: z.object({
       docTipo: z.number().int().nonnegative(),
-      docNro: z.union([z.string(), z.number()]).transform((v) => Number(v)),
+      docNro: z
+        .union([
+          z.string().regex(/^\d+$/, { message: 'docNro_invalido' }),
+          z.number().int({ message: 'docNro_invalido' }).nonnegative({ message: 'docNro_invalido' }),
+        ])
+        .transform((v) => Number(v)),
       condicionIVA: z.number().int().positive({ message: 'condicion_iva_obligatoria' }),
       razonSocial: z.string().min(1),
       domicilio: z.string().optional(),
@@ -127,8 +133,8 @@ export const EmitirComprobanteRequestSchema = z
       })
     }
 
-    // Regla 5: en Factura B con docTipo=99, docNro debe ser 0
-    if (cbteTipo === 6 && docTipo === DOC_TIPO.CONSUMIDOR_FINAL) {
+    // Regla 5: en B (factura y notas) con docTipo=99, docNro debe ser 0
+    if (isB(cbteTipo) && docTipo === DOC_TIPO.CONSUMIDOR_FINAL) {
       if (v.receptor.docNro !== 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -180,13 +186,17 @@ export const EmitirComprobanteRequestSchema = z
           path: ['receptor', 'condicionIVA'],
         })
       }
-      if (
-        (isB(cbteTipo) || isC(cbteTipo)) &&
-        !CONDICIONES_IVA_PARA_BC.includes(cond)
-      ) {
+      if (isB(cbteTipo) && !CONDICIONES_IVA_PARA_B.includes(cond)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: 'condicion_iva_invalida_para_BC',
+          message: 'condicion_iva_invalida_para_B',
+          path: ['receptor', 'condicionIVA'],
+        })
+      }
+      if (isC(cbteTipo) && !CONDICIONES_IVA_PARA_C.includes(cond)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'condicion_iva_invalida_para_C',
           path: ['receptor', 'condicionIVA'],
         })
       }

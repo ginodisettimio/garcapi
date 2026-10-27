@@ -42,6 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `NETWORK_ERROR` responde HTTP 503 (antes 500)
 
 ### Fixed
+- Condición IVA del receptor según la tabla de ARCA (`FEParamGetCondicionIvaReceptor`): la Factura C se rechazaba para responsables inscriptos y monotributistas (1, 6, 13, 16) y faltaba la condición 16 (Monotributo Trabajador Independiente Promovido) en A. El mensaje `condicion_iva_invalida_para_BC` pasa a `condicion_iva_invalida_para_B` / `condicion_iva_invalida_para_C`
+- `docNro` no numérico pasaba la validación como `NaN`; `ptoVta` 0 se aceptaba; la regla de `docNro` 0 para consumidor final ahora aplica también a las notas B
 - `GET /afip/fa-auth/status` no pedía JWT y exponía la ruta del TA y los datos del certificado: ahora requiere el mismo token que el resto de `/afip/*`
 - `POST /afip/facturas` con PDF binario no devolvía CAE, número ni vencimiento: ahora van en headers `X-Arca-*` (expuestos por CORS); la respuesta JSON incluye `tipoAutorizacion` y `pendienteInformar`
 - `docker-compose.yml`: montaba dos volúmenes en `/app/certs` (y en solo lectura, sin poder escribir el TA), usaba `ARCA_HTTP_CORS_ORIGINS` en vez de `ARCA_CORS_ORIGINS` y no pasaba los datos del emisor que exige el server
