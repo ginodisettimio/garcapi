@@ -1,14 +1,15 @@
-/**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
- */
+import { execFile } from 'node:child_process'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
+import { promisify } from 'node:util'
 import {
   CmsSignError,
   OpenSslNotFoundError,
   type ArcaError,
 } from '../domain/errors.js'
 
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
+const execFileAsync = promisify(execFile)
 
 /**
  * Contrato para firmar el TRA (Ticket Request Access) en formato
@@ -23,21 +24,54 @@ export interface CmsSigner {
  * Devuelve la versión si está, o null si no.
  */
 export async function detectOpenSsl(): Promise<string | null> {
-  throw new Error(PLACEHOLDER)
+  try {
+    const { stdout } = await execFileAsync('openssl', ['version'])
+    return stdout.trim() || null
+  } catch {
+    return null
+  }
 }
 
 /**
  * Implementación por defecto de `CmsSigner` basada en el binario
- * `openssl` del sistema. Usa `smime -sign -outform DER -nodetach`
+ * `openssl` del sistema. Usa `cms -sign -outform DER -nodetach`
  * que es el método estándar probado con WSAA.
  */
 export class OpenSslCmsSigner implements CmsSigner {
-  constructor(_opts: { verifyOnInit?: boolean } = {}) {
-    void _opts
+  private readonly verifyOnInit: boolean
+  private verified = false
+
+  constructor(opts: { verifyOnInit?: boolean } = {}) {
+    this.verifyOnInit = opts.verifyOnInit ?? false
   }
 
-  async sign(_traXml: string, _certPath: string, _keyPath: string): Promise<string> {
-    throw new Error(PLACEHOLDER)
+  async sign(traXml: string, certPath: string, keyPath: string): Promise<string> {
+    if (this.verifyOnInit && !this.verified) {
+      if (!(await detectOpenSsl())) throw new OpenSslNotFoundError()
+      this.verified = true
+    }
+
+    const dir = await mkdtemp(path.join(tmpdir(), 'arca-tra-'))
+    try {
+      const traPath = path.join(dir, 'tra.xml')
+      await writeFile(traPath, traXml, 'utf8')
+      const { stdout } = await execFileAsync(
+        'openssl',
+        ['cms', '-sign', '-in', traPath, '-signer', certPath, '-inkey', keyPath, '-nodetach', '-outform', 'DER'],
+        { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 },
+      )
+      return stdout.toString('base64')
+    } catch (err) {
+      const e = err as NodeJS.ErrnoException & { stderr?: Buffer }
+      if (e.code === 'ENOENT') throw new OpenSslNotFoundError()
+      throw new CmsSignError('No se pudo firmar el TRA con OpenSSL', {
+        certPath,
+        keyPath,
+        stderr: e.stderr?.toString().trim() ?? String(err),
+      })
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
   }
 }
 

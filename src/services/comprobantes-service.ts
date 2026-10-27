@@ -1,14 +1,8 @@
-/**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
- */
 import type { CbteTipo } from '../domain/index.js'
 import type { Logger } from '../domain/logger.js'
 import type { Emisor, EmisorProvider } from '../domain/types.js'
 import type { WsaaClient } from '../core/wsaa.js'
 import type { WsfeClient } from '../core/wsfe.js'
-
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
 
 export interface ComprobantesServiceDeps {
   emisor: EmisorProvider
@@ -23,20 +17,22 @@ export interface ComprobantesServiceDeps {
  * - `consultar(ptoVta, cbteTipo, nro)`: XML completo del comprobante.
  */
 export class ComprobantesService {
-  constructor(private readonly deps: ComprobantesServiceDeps) {
-    void this.deps
+  constructor(private readonly deps: ComprobantesServiceDeps) {}
+
+  async ultimoAutorizado(ptoVta: number, cbteTipo: CbteTipo): Promise<number> {
+    const emisor = await this.deps.emisor.getEmisor()
+    const { auth } = await this.deps.wsaa.authenticate(emisor.cuit)
+    return this.deps.wsfe.feCompUltimoAutorizado(auth, ptoVta, cbteTipo)
   }
 
-  async ultimoAutorizado(_ptoVta: number, _cbteTipo: CbteTipo): Promise<number> {
-    throw new Error(PLACEHOLDER)
-  }
-
-  async consultar(_ptoVta: number, _cbteTipo: CbteTipo, _nro: number): Promise<string> {
-    throw new Error(PLACEHOLDER)
+  async consultar(ptoVta: number, cbteTipo: CbteTipo, nro: number): Promise<string> {
+    const emisor = await this.deps.emisor.getEmisor()
+    const { auth } = await this.deps.wsaa.authenticate(emisor.cuit)
+    return this.deps.wsfe.feCompConsultar(auth, ptoVta, cbteTipo, nro)
   }
 
   /** Helper para pedir un emisor sin hacer un round-trip a ARCA. */
   async getEmisor(): Promise<Emisor> {
-    throw new Error(PLACEHOLDER)
+    return this.deps.emisor.getEmisor()
   }
 }

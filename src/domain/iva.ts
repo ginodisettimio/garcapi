@@ -1,3 +1,7 @@
+import type { CbteTipo } from './constants.js'
+import { isC } from './comprobante.js'
+import type { Item } from './types.js'
+
 /**
  * IDs y porcentajes de alícuotas de IVA según ARCA.
  * - 0%   → Id 3
@@ -59,4 +63,52 @@ export function mapAlicuota(iva: number): { id: number; pct: number } {
 /** Comprueba si un valor de IVA es admisible (porcentaje o ID). */
 export function isValidIvaInput(value: number): boolean {
   return IVA_PERCENT_ALLOWED.includes(value) || IVA_ID_ALLOWED.includes(value)
+}
+
+/** Redondea a 2 decimales (centavos). */
+function round2(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100
+}
+
+/** Importes de un comprobante tal como los espera FECAESolicitar. */
+export interface ImportesComprobante {
+  /** Neto gravado (suma de bases imponibles). Para C, es el total. */
+  impNeto: number
+  /** IVA total. Para C, 0. */
+  impIva: number
+  /** Importe total del comprobante. */
+  impTotal: number
+  /** Detalle de IVA agrupado por alícuota. Vacío para C. */
+  alicuotas: { id: number; baseImp: number; importe: number }[]
+}
+
+/**
+ * Calcula neto, IVA y total a partir de los ítems.
+ *
+ * - A y B: el precio unitario es neto; el IVA se discrimina y se
+ *   agrupa por alícuota (la base de cada ítem se redondea a centavos).
+ * - C: no se discrimina IVA; el neto es el total.
+ */
+export function calcularImportes(cbteTipo: CbteTipo, items: readonly Item[]): ImportesComprobante {
+  const bases = items.map((it) => ({ base: round2(it.cantidad * it.precioUnitario), iva: it.iva }))
+  const neto = round2(bases.reduce((acc, b) => acc + b.base, 0))
+
+  if (isC(cbteTipo)) {
+    return { impNeto: neto, impIva: 0, impTotal: neto, alicuotas: [] }
+  }
+
+  const porId = new Map<number, { pct: number; baseImp: number }>()
+  for (const b of bases) {
+    const { id, pct } = mapAlicuota(b.iva)
+    const acc = porId.get(id) ?? { pct, baseImp: 0 }
+    acc.baseImp = round2(acc.baseImp + b.base)
+    porId.set(id, acc)
+  }
+  const alicuotas = Array.from(porId, ([id, a]) => ({
+    id,
+    baseImp: a.baseImp,
+    importe: round2((a.baseImp * a.pct) / 100),
+  }))
+  const impIva = round2(alicuotas.reduce((acc, a) => acc + a.importe, 0))
+  return { impNeto: neto, impIva, impTotal: round2(neto + impIva), alicuotas }
 }

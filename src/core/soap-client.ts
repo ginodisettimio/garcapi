@@ -1,10 +1,5 @@
-/**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
- */
-import type { AxiosRequestConfig } from 'axios'
-
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
+import axios, { type AxiosInstance, type AxiosRequestConfig } from 'axios'
+import { NetworkError } from '../domain/errors.js'
 
 /** Argumentos para `SoapClient.post`. Exportado para tests y mocks. */
 export interface SoapPostArgs {
@@ -25,13 +20,44 @@ export interface SoapClient {
   post(args: SoapPostArgs): Promise<string>
 }
 
+const DEFAULT_TIMEOUT_MS = 30_000
+
 /** Cliente HTTP SOAP por defecto, basado en axios. */
 export class AxiosSoapClient implements SoapClient {
-  constructor(_defaults: AxiosRequestConfig = {}) {
-    void _defaults
+  private readonly http: AxiosInstance
+
+  constructor(defaults: AxiosRequestConfig = {}) {
+    this.http = axios.create(defaults)
   }
 
-  async post(_args: SoapPostArgs): Promise<string> {
-    throw new Error(PLACEHOLDER)
+  async post(args: SoapPostArgs): Promise<string> {
+    let status: number
+    let body: string
+    try {
+      const res = await this.http.post<string>(args.url, args.envelope, {
+        headers: {
+          'Content-Type': 'text/xml; charset=utf-8',
+          SOAPAction: `${args.soapActionNs}${args.action}`,
+        },
+        timeout: args.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        responseType: 'text',
+        // Los SOAP faults vienen con HTTP 500: los devolvemos para que el caller los parsee
+        validateStatus: () => true,
+      })
+      status = res.status
+      body = String(res.data ?? '')
+    } catch (err) {
+      throw new NetworkError(`Error de red llamando a ${args.url}: ${String(err)}`, {
+        url: args.url,
+        action: args.action,
+      })
+    }
+    if (status < 400 || /Fault>/.test(body)) return body
+    throw new NetworkError(`HTTP ${status} llamando a ${args.url}`, {
+      url: args.url,
+      action: args.action,
+      status,
+      body: body.slice(0, 500),
+    })
   }
 }

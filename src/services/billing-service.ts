@@ -1,16 +1,17 @@
-/**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
- */
-import type { CbteTipo } from '../domain/index.js'
+import PQueue from 'p-queue'
+import { CONDICION_IVA_LABELS, type CbteTipo } from '../domain/index.js'
+import { letraComprobante, prefijoArchivo } from '../domain/comprobante.js'
+import { ComprobanteRechazadoError, ValidationError } from '../domain/errors.js'
+import { calcularImportes } from '../domain/iva.js'
 import type { Logger } from '../domain/logger.js'
+import { EmitirComprobanteRequestSchema } from '../domain/schemas.js'
 import type { Emisor, EmisorProvider } from '../domain/types.js'
 import type { WsaaClient } from '../core/wsaa.js'
-import type { WsfeClient } from '../core/wsfe.js'
+import { parseErrores, parseObservaciones, type WsfeClient } from '../core/wsfe.js'
+import { tag } from '../core/xml.js'
 import type { PdfGenerator } from '../pdf/pdf-service.js'
 import type { ComprobanteEmitido, EmitirComprobanteRequest } from '../domain/types.js'
-
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
+import { todayYmd } from './date-utils.js'
 
 export interface BillingServiceDeps {
   emisor: EmisorProvider
@@ -26,9 +27,14 @@ export interface BillingServiceDeps {
  * y, opcionalmente, genera el PDF con CAE/QR.
  */
 export class BillingService {
-  constructor(private readonly deps: BillingServiceDeps) {
-    void this.deps
-  }
+  /**
+   * Serializa "pedir número + FECAESolicitar": dos emisiones en paralelo
+   * pedirían el mismo número y ARCA rechazaría una.
+   * shortcut: cola por proceso; con varias réplicas emitiendo en el mismo ptoVta hace falta un lock distribuido.
+   */
+  private readonly queue = new PQueue({ concurrency: 1 })
+
+  constructor(private readonly deps: BillingServiceDeps) {}
 
   /**
    * Emite un comprobante electrónico.
@@ -41,9 +47,121 @@ export class BillingService {
    *  7. Si hay `pdf`, genera el PDF.
    *  8. Devuelve el resultado.
    */
-  async emitir(_input: EmitirComprobanteRequest | unknown): Promise<ComprobanteEmitido> {
-    void _input
-    throw new Error(PLACEHOLDER)
+  async emitir(input: EmitirComprobanteRequest | unknown): Promise<ComprobanteEmitido> {
+    // 1) Validación
+    const parsed = EmitirComprobanteRequestSchema.safeParse(input)
+    if (!parsed.success) {
+      throw new ValidationError(
+        'Request de emisión inválido',
+        parsed.error.issues.map((i) => ({ path: i.path, message: i.message })),
+      )
+    }
+    const req = parsed.data
+    const cbteTipo = req.cbteTipo as CbteTipo
+    const fecha = req.fecha ?? todayYmd()
+
+    // 2) y 3) Emisor + TA
+    const emisor = await this.deps.emisor.getEmisor()
+    const { auth } = await this.deps.wsaa.authenticate(emisor.cuit)
+
+    // 4) y 5) Número + FECAESolicitar, serializados
+    const { nro, xml } = await this.queue.add(async () => {
+      const nro = await this.deps.wsfe.getNextNumber(auth, req.ptoVta, cbteTipo)
+      const xml = await this.deps.wsfe.fecaeSolicitar(auth, {
+        ptoVta: req.ptoVta,
+        cbteTipo,
+        concepto: req.concepto,
+        docTipo: req.receptor.docTipo,
+        docNro: req.receptor.docNro,
+        condIvaReceptor: req.receptor.condicionIVA,
+        cbteDesde: nro,
+        cbteHasta: nro,
+        fecha,
+        moneda: req.moneda,
+        cotizacion: req.cotizacion,
+        items: req.items,
+        cbtesAsoc: req.cbtesAsoc as EmitirComprobanteRequest['cbtesAsoc'],
+        fchServDesde: req.fchServDesde,
+        fchServHasta: req.fchServHasta,
+        fchVtoPago: req.fchVtoPago,
+      })
+      return { nro, xml }
+    })
+
+    // 6) Resultado
+    const resultado = tag(xml, 'Resultado')
+    const cae = tag(xml, 'CAE') ?? ''
+    const vtoCae = tag(xml, 'CAEFchVto') ?? ''
+    const observaciones = parseObservaciones(xml)
+    if (resultado !== 'A' || !cae) {
+      throw new ComprobanteRechazadoError(cae || undefined, vtoCae || undefined, parseErrores(xml), observaciones)
+    }
+    if (observaciones.length > 0) {
+      this.deps.logger?.warn({ event: 'arca.billing.observaciones', observaciones }, 'CAE con observaciones')
+    }
+
+    const importeTotal = calcularImportes(cbteTipo, req.items).impTotal
+    const fileName =
+      `${prefijoArchivo(cbteTipo)}_${letraComprobante(cbteTipo)}_` +
+      `${String(req.ptoVta).padStart(5, '0')}-${String(nro).padStart(8, '0')}.pdf`
+    this.deps.logger?.info(
+      { event: 'arca.billing.emitido', cbteTipo, ptoVta: req.ptoVta, nro, cae },
+      'Comprobante emitido',
+    )
+
+    const result: ComprobanteEmitido = {
+      cae,
+      vtoCae,
+      nroComprobante: nro,
+      cbteTipo,
+      ptoVta: req.ptoVta,
+      importeTotal,
+      fileName,
+      xml,
+    }
+
+    // 7) PDF: el CAE ya está asignado, un fallo acá no puede perder el resultado
+    if (this.deps.pdf) {
+      try {
+        result.pdfBuffer = await this.deps.pdf.generateFacturaPdf(
+          {
+            ptoVta: req.ptoVta,
+            cbteTipo,
+            nro,
+            fecha,
+            cuit: emisor.cuit,
+            importe: importeTotal,
+            moneda: req.moneda,
+            cotizacion: req.cotizacion,
+            tipoDocRec: req.receptor.docTipo,
+            nroDocRec: req.receptor.docNro,
+            cae,
+            vtoCae,
+            items: req.items,
+            condicionIvaEmisor: emisor.condicionIva,
+            razonSocialEmisor: emisor.razonSocial,
+            domicilioEmisor: emisor.domicilio,
+            inicioActividades: emisor.inicioActividades,
+            ingresosBrutos: emisor.ingresosBrutos,
+            razonSocialReceptor: req.receptor.razonSocial,
+            domicilioReceptor: req.receptor.domicilio ?? '-',
+            condicionIvaReceptor: CONDICION_IVA_LABELS[req.receptor.condicionIVA] ?? String(req.receptor.condicionIVA),
+            condicionVenta: req.condicionVenta,
+            datosBancarios: emisor.datosBancarios,
+            cbtesAsoc: req.cbtesAsoc as EmitirComprobanteRequest['cbtesAsoc'],
+          },
+          fileName,
+        )
+      } catch (err) {
+        this.deps.logger?.warn(
+          { event: 'arca.billing.pdf_error', cae, nro, err: String(err) },
+          'Comprobante emitido pero falló la generación del PDF',
+        )
+      }
+    }
+
+    // 8)
+    return result
   }
 }
 

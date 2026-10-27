@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { formatYmd, parseYmd, todayYmd, ymdToDmy, ymdToIso } from '../../src/services/date-utils.js'
 
-// Versión pública: date-utils es un stub. Tests disponibles en la versión completa.
-describe.skip('date-utils', () => {
+describe('date-utils', () => {
   it('formatYmd', () => {
     expect(formatYmd(new Date(2024, 0, 5))).toBe('20240105')
     expect(formatYmd(new Date(2024, 11, 31))).toBe('20241231')

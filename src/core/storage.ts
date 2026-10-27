@@ -1,10 +1,7 @@
-/**
- * Versión pública — la implementación está en la versión completa.
- * Ver https://mpago.la/31zH7xo para obtener acceso al código fuente.
- */
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import type { ArcaEnv } from '../domain/env.js'
-
-const PLACEHOLDER = 'Disponible en la versión completa — https://mpago.la/31zH7xo'
+import { FileSystemError } from '../domain/errors.js'
 
 /**
  * Contrato para persistir y recuperar el Ticket de Acceso (TA).
@@ -34,12 +31,25 @@ export class FileTaStorage implements TaStorage {
     return `${this.baseDir}/${env}/${this.taFile}`
   }
 
-  async read(_env: ArcaEnv): Promise<string | null> {
-    throw new Error(PLACEHOLDER)
+  async read(env: ArcaEnv): Promise<string | null> {
+    const file = this.pathFor(env)
+    try {
+      return await readFile(file, 'utf8')
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
+      throw new FileSystemError(`No se pudo leer el TA: ${file}`, 'TA_READ_ERROR', { err: String(err) })
+    }
   }
 
-  async write(_env: ArcaEnv, _taXml: string): Promise<void> {
-    throw new Error(PLACEHOLDER)
+  async write(env: ArcaEnv, taXml: string): Promise<void> {
+    const file = this.pathFor(env)
+    try {
+      await mkdir(path.dirname(file), { recursive: true })
+      // 0o600: el TA es una credencial
+      await writeFile(file, taXml, { encoding: 'utf8', mode: 0o600 })
+    } catch (err) {
+      throw new FileSystemError(`No se pudo escribir el TA: ${file}`, 'TA_WRITE_ERROR', { err: String(err) })
+    }
   }
 }
 
@@ -47,15 +57,17 @@ export class FileTaStorage implements TaStorage {
  * Implementación de `TaStorage` en memoria. Útil para tests.
  */
 export class MemoryTaStorage implements TaStorage {
+  private readonly data = new Map<ArcaEnv, string>()
+
   pathFor(env: ArcaEnv): string {
     return `<memory>/${env}/TA_wsfe.xml`
   }
 
-  async read(_env: ArcaEnv): Promise<string | null> {
-    throw new Error(PLACEHOLDER)
+  async read(env: ArcaEnv): Promise<string | null> {
+    return this.data.get(env) ?? null
   }
 
-  async write(_env: ArcaEnv, _taXml: string): Promise<void> {
-    throw new Error(PLACEHOLDER)
+  async write(env: ArcaEnv, taXml: string): Promise<void> {
+    this.data.set(env, taXml)
   }
 }

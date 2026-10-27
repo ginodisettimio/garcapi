@@ -25,8 +25,7 @@ class EnvelopeCapturer implements SoapClient {
 
 const auth: ArcaAuth = { token: 'tok', sign: 'sig', cuit: '20223565078' }
 
-// Versión pública: WsfeClient es un stub. Tests disponibles en la versión completa.
-describe.skip('WsfeClient', () => {
+describe('WsfeClient', () => {
   it('buildAuthEnvelope contiene Auth, Token, Sign, Cuit', () => {
     const c = new WsfeClient(new MockSoapClient('<ok/>'), 'homologacion')
     const env = c.buildAuthEnvelope('FECompConsultar', auth, '<X/>')

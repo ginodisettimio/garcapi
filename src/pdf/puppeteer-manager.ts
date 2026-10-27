@@ -58,9 +58,8 @@ export class PuppeteerManager {
     throw new Error(PLACEHOLDER)
   }
 
-  async close(): Promise<void> {
-    throw new Error(PLACEHOLDER)
-  }
+  /** No-op: en esta versión nunca se lanza un browser, así que no hay nada que cerrar. */
+  async close(): Promise<void> {}
 }
 
 /**

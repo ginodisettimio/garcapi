@@ -4,8 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
-// Versión pública: storage es un stub. Tests disponibles en la versión completa.
-describe.skip('MemoryTaStorage', () => {
+describe('MemoryTaStorage', () => {
   it('returns null when empty', async () => {
     const s = new MemoryTaStorage()
     expect(await s.read('homologacion')).toBe(null)
@@ -31,8 +30,7 @@ describe.skip('MemoryTaStorage', () => {
   })
 })
 
-// Versión pública: FileTaStorage es un stub. Tests disponibles en la versión completa.
-describe.skip('FileTaStorage', () => {
+describe('FileTaStorage', () => {
   it('writes, reads and persists across instances', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'arca-test-'))
     try {
