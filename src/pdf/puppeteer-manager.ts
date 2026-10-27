@@ -103,6 +103,10 @@ export class PuppeteerManager {
           headless: true,
           executablePath: resolveExecutablePath(this.opts.executablePath),
           args: [...DEFAULT_BROWSER_ARGS, ...(this.opts.args ?? [])],
+          // Si puppeteer cierra Chrome al recibir la señal, las emisiones en curso al apagar se quedan sin PDF; lo cierra close()
+          handleSIGINT: false,
+          handleSIGTERM: false,
+          handleSIGHUP: false,
         })
         .then((browser) => {
           browser.on('disconnected', () => {
