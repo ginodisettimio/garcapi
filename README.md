@@ -108,6 +108,7 @@ await arca.close()
 | `ARCA_TEMPLATE_TICKET` | _(built-in)_ | Path a un template HTML de ticket custom |
 | `ARCA_PDF_FORMATO` | `a4` | Formato de las facturas: `a4` \| `ticket` (térmica) |
 | `ARCA_PDF_TICKET_MM` | `80` | Ancho del ticket en mm (80 o 58) |
+| `ARCA_CAEA_PTO_VTA` | _(vacío)_ | Punto de venta CAEA: habilita la contingencia (ver Contingencia) |
 | `ARCA_MONTO_MAX_CF` | `10000000` | Importe desde el cual se rechaza Consumidor Final sin identificar (RG 5700/2025). `0` desactiva |
 | `ARCA_LOG_LEVEL` | `info` | `debug` \| `info` \| `warn` \| `error` \| `silent` |
 
@@ -125,7 +126,7 @@ Con `ARCA_PDF_FORMATO=ticket` (o `pdf: { formato: 'ticket' }`) las facturas sale
 
 `ARCA_TEMPLATE_FACTURA` / `ARCA_TEMPLATE_TICKET` / `ARCA_TEMPLATE_PRESUPUESTO` (o `pdf.templateFactura` / `pdf.templateTicket` / `pdf.templatePresupuesto`) apuntan a un HTML propio. Placeholders:
 
-- `{{campo}}` → texto escapado: `letra`, `codigo`, `tipoComprobante`, `ptoVta`, `nro`, `fecha`, `cuitEmisor`, `razonSocialEmisor`, `domicilioEmisor`, `condicionIvaEmisor`, `ingresosBrutos`, `inicioActividades`, `docReceptor`, `razonSocialReceptor`, `domicilioReceptor`, `condicionIvaReceptor`, `condicionVenta`, `cbtesAsoc`, `datosBancarios`, `cae`, `vtoCae`, `qr` (data URL del QR AFIP), `titulo`.
+- `{{campo}}` → texto escapado: `letra`, `codigo`, `tipoComprobante`, `ptoVta`, `nro`, `fecha`, `cuitEmisor`, `razonSocialEmisor`, `domicilioEmisor`, `condicionIvaEmisor`, `ingresosBrutos`, `inicioActividades`, `docReceptor`, `razonSocialReceptor`, `domicilioReceptor`, `condicionIvaReceptor`, `condicionVenta`, `cbtesAsoc`, `datosBancarios`, `cae`, `vtoCae`, `tipoAutorizacion` (`CAE` o `CAEA`), `qr` (data URL del QR AFIP), `titulo`.
 - `{{{items}}}` y `{{{totales}}}` → HTML generado (ítems y totales según la letra; en el ticket los ítems van en líneas compactas). Factura y ticket usan los mismos `{{campo}}`.
 - Presupuesto: además `tituloDocumento` y `referenciaOrigen` (sin `cae`, `vtoCae`, `qr` ni `letra`).
 
@@ -249,9 +250,14 @@ tsx src/bin/wsfev1-params.ts
 
 # Chequeo completo: FEDummy → TA → FEParamGetPtosVenta → FECompUltimoAutorizado (no emite)
 tsx src/bin/pipeline.ts -p 1 -t 6
+
+# Contingencia CAEA (punto de venta de ARCA_CAEA_PTO_VTA o -p)
+tsx src/bin/caea.ts preparar   # pide el CAEA de la quincena
+tsx src/bin/caea.ts informar   # informa lo emitido con CAEA
+tsx src/bin/caea.ts estado
 ```
 
-Compilados, quedan como `arca-tra`, `arca-sign-cms`, `arca-submit-login`, `arca-wsfev1-dummy`, `arca-wsfev1-params` y `arca-pipeline`.
+Compilados, quedan como `arca-tra`, `arca-sign-cms`, `arca-submit-login`, `arca-wsfev1-dummy`, `arca-wsfev1-params`, `arca-pipeline` y `arca-caea`.
 
 ---
 
@@ -271,6 +277,19 @@ Pasos en ARCA (con clave fiscal del CUIT emisor):
 5. **Verificación sin emitir**: `tsx src/bin/pipeline.ts -e produccion -p <ptoVta>` (FEDummy → TA → puntos de venta → último autorizado).
 
 Los comprobantes de producción tienen validez fiscal: probá primero todo el flujo en homologación.
+
+## 🆘 Contingencia (CAEA)
+
+Si ARCA no responde, el comprobante se puede autorizar con el **CAEA** (código anticipado) de la quincena. Desde agosto de 2026 (RG 5852/2026) el CAEA es solo para contingencias y no requiere adhesión.
+
+1. Creá un punto de venta de tipo **CAEA** (además del de RECE) y definí `ARCA_CAEA_PTO_VTA`.
+2. Con eso, `billing.emitir()`:
+   - Si ARCA no responde **antes** de pedir el CAE (login o número), autoriza con el CAEA en ese punto de venta, numera localmente y devuelve `tipoAutorizacion: 'CAEA'`, `pendienteInformar: true`. El PDF y el QR salen con el CAEA.
+   - Si se corta **durante** `FECAESolicitar`, no cae a CAEA (ARCA pudo haberlo autorizado y se duplicaría la venta): devuelve `CAE_RESULTADO_INCIERTO` (HTTP 504). Consultá ese número con `comprobantes.consultar()` antes de reintentar.
+   - Sin CAEA para la quincena: `CAEA_NO_DISPONIBLE` (HTTP 503).
+3. Mientras ARCA está disponible hay que **pedir el CAEA** (desde 5 días antes de cada quincena) e **informar** lo emitido antes de la fecha tope (`FchTopeInf`), más las quincenas sin movimiento. El server lo hace solo al arrancar y cada 30 min. Sin server: `tsx src/bin/caea.ts preparar|informar|estado` (por ejemplo, desde cron).
+
+El CAEA, la numeración y los pendientes se guardan en `<ARCA_TA_DIR>/<env>/caea.json` (escritura atómica; un pendiente se persiste antes de devolver el comprobante). Para otro backend implementá `CaeaStore` y pasalo en `contingencia: { ptoVta, store }`. Si un comprobante es rechazado al informarlo, se frena ese punto de venta/tipo (la numeración debe ser correlativa) y queda en el log y en `caea informar` para revisarlo.
 
 ## 🐳 Deploy
 
@@ -341,3 +360,4 @@ MIT © Tordini. Ver [LICENSE](LICENSE).
 | `PdfService` + `PuppeteerManager` (PDFs con QR AFIP) y templates | ✅ |
 | `CuitService` (Padrón A13) | ✅ |
 | Scripts CLI | ✅ |
+| Contingencia CAEA (`ContingenciaService`) | ✅ |

@@ -9,7 +9,7 @@ import { isC } from '../domain/comprobante.js'
 import { WsfeError, type AfipError } from '../domain/errors.js'
 import type { ComprobanteAsociado, Item } from '../domain/types.js'
 import { IVA_ID_TO_PERCENT, calcularImportes } from '../domain/iva.js'
-import type { ArcaAuth } from '../domain/types.js'
+import type { ArcaAuth, CaeaInfo } from '../domain/types.js'
 import type { SoapClient } from './soap-client.js'
 import { escapeXml, tag, tags } from './xml.js'
 
@@ -49,6 +49,43 @@ function assertSinErrores(xml: string, action: string): void {
       code: 'WSFE_ERRORES',
       errores,
     })
+  }
+}
+
+/** Datos de un comprobante para FECAESolicitar / FECAEARegInformativo. */
+export interface FeComprobanteRequest {
+  ptoVta: number
+  cbteTipo: CbteTipo
+  concepto: number
+  docTipo: number
+  docNro: number
+  condIvaReceptor: number
+  cbteDesde: number
+  cbteHasta: number
+  fecha: string
+  moneda: string
+  cotizacion: number
+  items: Item[]
+  cbtesAsoc?: ComprobanteAsociado[]
+  fchServDesde?: string
+  fchServHasta?: string
+  fchVtoPago?: string
+}
+
+/** Comprobante sin punto de venta ni número (los asigna quien autoriza: CAE o CAEA). */
+export type FeDetalle = Omit<FeComprobanteRequest, 'ptoVta' | 'cbteDesde' | 'cbteHasta'>
+
+function parseCaea(xml: string): CaeaInfo {
+  const caea = tag(xml, 'CAEA')
+  if (!caea) throw new WsfeError('Respuesta de CAEA sin código', { code: 'WSFE_RESPUESTA_INVALIDA' })
+  const orden = Number(tag(xml, 'Orden'))
+  return {
+    caea,
+    periodo: Number(tag(xml, 'Periodo')),
+    orden: orden === 2 ? 2 : 1,
+    fchVigDesde: tag(xml, 'FchVigDesde') ?? '',
+    fchVigHasta: tag(xml, 'FchVigHasta') ?? '',
+    fchTopeInf: tag(xml, 'FchTopeInf') ?? '',
   }
 }
 
@@ -180,27 +217,72 @@ export class WsfeClient {
    * Devuelve el XML crudo; el caller (BillingService) se encarga
    * de parsear CAE, errores, etc. Lanza `WsfeError` solo ante un SOAP fault.
    */
-  async fecaeSolicitar(
+  async fecaeSolicitar(auth: ArcaAuth, req: FeComprobanteRequest): Promise<string> {
+    const body =
+      '<FeCAEReq>' +
+      `<FeCabReq><CantReg>1</CantReg><PtoVta>${req.ptoVta}</PtoVta><CbteTipo>${req.cbteTipo}</CbteTipo></FeCabReq>` +
+      `<FeDetReq><FECAEDetRequest>${this.buildDetalle(auth, req)}</FECAEDetRequest></FeDetReq>` +
+      '</FeCAEReq>'
+    const action = 'FECAESolicitar'
+    const res = await this.call(action, auth, body)
+    // Solo el fault es excepción acá: los rechazos (Err/Obs) los interpreta el caller
+    assertSinFault(res, action)
+    return res
+  }
+
+  /**
+   * FECAEASolicitar. Pide el CAEA de una quincena (`orden` 1 = días 1–15, 2 = 16–fin de mes).
+   * Si ya fue otorgado (error 15008) lo recupera con `FECAEAConsultar`.
+   */
+  async fecaeaSolicitar(auth: ArcaAuth, periodo: number, orden: 1 | 2): Promise<CaeaInfo> {
+    const res = await this.call('FECAEASolicitar', auth, `<Periodo>${periodo}</Periodo><Orden>${orden}</Orden>`)
+    assertSinFault(res, 'FECAEASolicitar')
+    if (parseErrores(res).some((e) => e.Code === 15008)) return this.fecaeaConsultar(auth, periodo, orden)
+    assertSinErrores(res, 'FECAEASolicitar')
+    return parseCaea(res)
+  }
+
+  /** FECAEAConsultar. Recupera un CAEA ya otorgado. */
+  async fecaeaConsultar(auth: ArcaAuth, periodo: number, orden: 1 | 2): Promise<CaeaInfo> {
+    const res = await this.call('FECAEAConsultar', auth, `<Periodo>${periodo}</Periodo><Orden>${orden}</Orden>`)
+    assertSinErrores(res, 'FECAEAConsultar')
+    return parseCaea(res)
+  }
+
+  /**
+   * FECAEARegInformativo. Informa un comprobante emitido con CAEA.
+   * Devuelve el XML crudo (Resultado/Observaciones los interpreta el caller).
+   */
+  async fecaeaRegInformativo(
     auth: ArcaAuth,
-    req: {
-      ptoVta: number
-      cbteTipo: CbteTipo
-      concepto: number
-      docTipo: number
-      docNro: number
-      condIvaReceptor: number
-      cbteDesde: number
-      cbteHasta: number
-      fecha: string
-      moneda: string
-      cotizacion: number
-      items: Item[]
-      cbtesAsoc?: ComprobanteAsociado[]
-      fchServDesde?: string
-      fchServHasta?: string
-      fchVtoPago?: string
-    },
+    req: FeComprobanteRequest & { caea: string; cbteFchHsGen: string },
   ): Promise<string> {
+    const body =
+      '<FeCAEARegInfReq>' +
+      `<FeCabReq><CantReg>1</CantReg><PtoVta>${req.ptoVta}</PtoVta><CbteTipo>${req.cbteTipo}</CbteTipo></FeCabReq>` +
+      '<FeDetReq><FECAEADetRequest>' +
+      this.buildDetalle(auth, req) +
+      `<CAEA>${escapeXml(req.caea)}</CAEA><CbteFchHsGen>${req.cbteFchHsGen}</CbteFchHsGen>` +
+      '</FECAEADetRequest></FeDetReq>' +
+      '</FeCAEARegInfReq>'
+    const res = await this.call('FECAEARegInformativo', auth, body)
+    assertSinFault(res, 'FECAEARegInformativo')
+    return res
+  }
+
+  /** FECAEASinMovimientoInformar. Informa que un CAEA no se usó en el punto de venta. */
+  async fecaeaSinMovimientoInformar(auth: ArcaAuth, ptoVta: number, caea: string): Promise<string> {
+    const res = await this.call(
+      'FECAEASinMovimientoInformar',
+      auth,
+      `<PtoVta>${ptoVta}</PtoVta><CAEA>${escapeXml(caea)}</CAEA>`,
+    )
+    assertSinFault(res, 'FECAEASinMovimientoInformar')
+    return res
+  }
+
+  /** Arma el contenido de FECAEDetRequest (compartido por CAE y CAEA). */
+  private buildDetalle(auth: ArcaAuth, req: FeComprobanteRequest): string {
     const imp = calcularImportes(req.cbteTipo, req.items)
 
     // El orden de los elementos respeta la secuencia del WSDL de FECAEDetRequest
@@ -252,17 +334,7 @@ export class WsfeClient {
           .join('') +
         '</Iva>'
     }
-
-    const body =
-      '<FeCAEReq>' +
-      `<FeCabReq><CantReg>1</CantReg><PtoVta>${req.ptoVta}</PtoVta><CbteTipo>${req.cbteTipo}</CbteTipo></FeCabReq>` +
-      `<FeDetReq><FECAEDetRequest>${det}</FECAEDetRequest></FeDetReq>` +
-      '</FeCAEReq>'
-    const action = 'FECAESolicitar'
-    const res = await this.call(action, auth, body)
-    // Solo el fault es excepción acá: los rechazos (Err/Obs) los interpreta el caller
-    assertSinFault(res, action)
-    return res
+    return det
   }
 }
 

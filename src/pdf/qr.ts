@@ -20,7 +20,7 @@ export function buildQrUrl(data: FacturaPdfData, baseUrl: string = ARCA_URLS.pro
     ctz: data.cotizacion,
     tipoDocRec: data.tipoDocRec,
     nroDocRec: data.nroDocRec,
-    tipoCodAut: 'E',
+    tipoCodAut: data.tipoCodAut ?? 'E',
     codAut: Number(data.cae),
   }
   return `${baseUrl}?p=${Buffer.from(JSON.stringify(payload)).toString('base64')}`

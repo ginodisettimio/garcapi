@@ -164,8 +164,29 @@ export interface ComprobanteEmitido {
   fileName: string
   /** Buffer del PDF (opcional, presente si pdf.enabled). */
   pdfBuffer?: Buffer
-  /** XML crudo devuelto por ARCA. */
+  /** XML crudo devuelto por ARCA (vacío si se emitió con CAEA en contingencia). */
   xml: string
+  /** Con qué se autorizó: CAE en línea o CAEA de contingencia. */
+  tipoAutorizacion?: 'CAE' | 'CAEA'
+  /** CAEA: el comprobante todavía no se informó a ARCA (FECAEARegInformativo). */
+  pendienteInformar?: boolean
+}
+
+/**
+ * CAEA (Código de Autorización Electrónico Anticipado) de una quincena.
+ * Se usa solo en contingencia, cuando ARCA no responde.
+ */
+export interface CaeaInfo {
+  caea: string
+  /** Período YYYYMM. */
+  periodo: number
+  /** 1 = días 1–15, 2 = 16–fin de mes. */
+  orden: 1 | 2
+  /** Vigencia (YYYYMMDD). */
+  fchVigDesde: string
+  fchVigHasta: string
+  /** Fecha tope para informar los comprobantes emitidos (YYYYMMDD). */
+  fchTopeInf: string
 }
 
 /**

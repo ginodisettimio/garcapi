@@ -2,6 +2,15 @@ import type { NextFunction, Request, Response } from 'express'
 import { ArcaError, ValidationError, WsfeError, ComprobanteRechazadoError } from '../../domain/errors.js'
 import type { Logger } from '../../domain/logger.js'
 
+/** Status HTTP por código de `ArcaError` (el resto, 500). */
+const STATUS_BY_CODE: Record<string, number> = {
+  TA_INVALIDO: 401,
+  CUIT_NO_ENCONTRADO: 404,
+  NETWORK_ERROR: 503,
+  CAEA_NO_DISPONIBLE: 503,
+  CAE_RESULTADO_INCIERTO: 504,
+}
+
 /**
  * Crea un middleware de error handler que mapea `ArcaError`
  * a respuestas HTTP uniformes `{ ok: false, error, code, ... }`.
@@ -43,16 +52,7 @@ export function createErrorHandlerMiddleware(opts: { logger?: Logger } = {}) {
       return
     }
     if (err instanceof ArcaError) {
-      const status =
-        err.code === 'TA_INVALIDO'
-          ? 401
-          : err.code === 'CUIT_NO_ENCONTRADO'
-            ? 404
-            : err.code === 'CONFIG_ERROR'
-              ? 500
-              : err.code === 'OPENSSL_NOT_FOUND'
-                ? 500
-                : 500
+      const status = STATUS_BY_CODE[err.code] ?? 500
       res.status(status).json({
         ok: false,
         error: err.message,

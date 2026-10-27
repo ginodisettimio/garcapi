@@ -31,7 +31,8 @@
     "arca-submit-login": "./dist/bin/submit-login.js",
     "arca-wsfev1-dummy": "./dist/bin/wsfev1-dummy.js",
     "arca-wsfev1-params": "./dist/bin/wsfev1-params.js",
-    "arca-pipeline": "./dist/bin/pipeline.js"
+    "arca-pipeline": "./dist/bin/pipeline.js",
+    "arca-caea": "./dist/bin/caea.js"
   },
   "files": [
     "dist",
@@ -55,6 +56,7 @@
     "arca:submit-login": "tsx src/bin/submit-login.ts",
     "arca:wsfev1:dummy": "tsx src/bin/wsfev1-dummy.ts",
     "arca:wsfev1:params": "tsx src/bin/wsfev1-params.ts",
+    "arca:caea": "tsx src/bin/caea.ts",
     "arca:pipeline:homo": "cross-env ARCA_ENV=homologacion tsx src/bin/pipeline.ts",
     "arca:pipeline:prod": "cross-env ARCA_ENV=produccion tsx src/bin/pipeline.ts"
   },

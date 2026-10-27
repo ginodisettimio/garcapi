@@ -20,6 +20,8 @@ export interface FacturaPdfData {
   nroDocRec: number
   cae: string
   vtoCae: string
+  /** 'E' = CAE (default), 'A' = CAEA de contingencia. */
+  tipoCodAut?: 'E' | 'A'
   items: Item[]
   condicionIvaEmisor: string
   razonSocialEmisor: string
@@ -228,6 +230,7 @@ function facturaFields(data: FacturaPdfData, qrDataUrl: string, titulo: string):
     cbtesAsoc: cbtesAsoc ? `Comprobantes asociados: ${cbtesAsoc}` : '',
     datosBancarios: data.datosBancarios ?? '',
     cae: data.cae,
+    tipoAutorizacion: data.tipoCodAut === 'A' ? 'CAEA' : 'CAE',
     vtoCae: ymdToDmy(data.vtoCae),
     qr: qrDataUrl,
   }

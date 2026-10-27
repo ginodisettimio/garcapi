@@ -27,3 +27,11 @@ ARCA_CUIT=<tu cuit> ARCA_PADRON_A13=1 npm run test:integration
 ```
 
 Ver `docs/AMBIENTES.md` para más detalles sobre certs y entornos.
+
+`contingencia.test.ts` (CAEA) también es opt-in: necesita un punto de venta
+habilitado como CAEA en homologación. Simula la caída de ARCA y verifica que el
+comprobante se emite con CAEA y se informa después.
+
+```bash
+ARCA_CUIT=<tu cuit> ARCA_CAEA_PTO_VTA=<pto vta CAEA> npm run test:integration
+```

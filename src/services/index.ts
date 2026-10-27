@@ -1,4 +1,5 @@
 export * from './billing-service.js'
 export * from './comprobantes-service.js'
 export * from './cuit-service.js'
+export * from './contingencia-service.js'
 export * from './date-utils.js'

@@ -7,8 +7,10 @@ import { AxiosSoapClient, type SoapClient } from './core/soap-client.js'
 import { WsaaClient } from './core/wsaa.js'
 import { WsfeClient } from './core/wsfe.js'
 import { PadronA13Client } from './core/padron-a13.js'
+import { FileCaeaStore, type CaeaStore } from './core/caea-store.js'
 import { BillingService } from './services/billing-service.js'
 import { ComprobantesService } from './services/comprobantes-service.js'
+import { ContingenciaService } from './services/contingencia-service.js'
 import { type CuitService, PadronA13CuitService } from './services/cuit-service.js'
 import { PuppeteerManager } from './pdf/puppeteer-manager.js'
 import { PdfService, type PdfGenerator } from './pdf/pdf-service.js'
@@ -84,6 +86,12 @@ export interface CreateArcaOptions {
   soapClient?: SoapClient
   /** Servicio de CUIT custom. */
   cuitService?: CuitService
+  /**
+   * Contingencia CAEA: punto de venta de contingencia (dado de alta como CAEA en ARCA)
+   * y store del CAEA/pendientes (default: `caea.json` junto al TA). Default ARCA_CAEA_PTO_VTA.
+   * `false` la deshabilita.
+   */
+  contingencia?: { ptoVta: number; store?: CaeaStore } | false
   /** Directorio de trabajo para resolver paths relativos. */
   cwd?: string
 }
@@ -108,6 +116,8 @@ export interface ArcaModule {
   puppeteer: PuppeteerManager | null
   /** Generador de PDF. */
   pdf: PdfGenerator | null
+  /** Contingencia CAEA (null si no está configurada). */
+  contingencia: ContingenciaService | null
   /** Emisor (configurado). */
   emisor: EmisorProvider
   /** Cierra los recursos (Puppeteer, etc). */
@@ -218,6 +228,22 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
   }
 
   // 11) Services
+  const contingenciaOpts =
+    opts.contingencia === false
+      ? null
+      : (opts.contingencia ?? (config.contingencia.ptoVta !== null ? { ptoVta: config.contingencia.ptoVta } : null))
+  const contingencia = contingenciaOpts
+    ? new ContingenciaService({
+        emisor,
+        wsaa,
+        wsfe,
+        store: contingenciaOpts.store ?? new FileCaeaStore(taDir),
+        arcaEnv,
+        ptoVta: contingenciaOpts.ptoVta,
+        logger,
+      })
+    : null
+
   const billing = new BillingService({
     emisor,
     wsaa,
@@ -225,6 +251,7 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
     logger,
     pdf: pdf ?? undefined,
     montoMaxConsumidorFinal: config.montoMaxConsumidorFinal,
+    contingencia: contingencia ?? undefined,
   })
   const comprobantes = new ComprobantesService({ emisor, wsaa, wsfe, logger })
   const padronWsaa = new WsaaClient({
@@ -251,6 +278,7 @@ export function createArca(opts: CreateArcaOptions): ArcaModule {
     wsfe,
     puppeteer,
     pdf,
+    contingencia,
     emisor,
     async close() {
       if (puppeteer) await puppeteer.close()
@@ -274,11 +302,12 @@ export type {
   EmitirComprobanteRequest,
   ArcaAuth,
   TicketAcceso,
+  CaeaInfo,
 } from './domain/index.js'
 
 // Core
-export { WsaaClient, WsfeClient, PadronA13Client } from './core/index.js'
-export type { CmsSigner, SoapClient, TaStorage } from './core/index.js'
+export { WsaaClient, WsfeClient, PadronA13Client, FileCaeaStore, MemoryCaeaStore } from './core/index.js'
+export type { CmsSigner, SoapClient, TaStorage, CaeaStore, CaeaState, ComprobanteCaeaPendiente, FeComprobanteRequest, FeDetalle } from './core/index.js'
 export {
   FileTaStorage,
   MemoryTaStorage,
@@ -288,13 +317,15 @@ export {
 } from './core/index.js'
 
 // Services
-export { BillingService, ComprobantesService, PadronA13CuitService, NotImplementedCuitService } from './services/index.js'
+export { BillingService, ComprobantesService, ContingenciaService, PadronA13CuitService, NotImplementedCuitService } from './services/index.js'
 export type {
   BillingServiceDeps,
   ComprobantesServiceDeps,
   CuitService,
   CuitInfo,
   PadronA13CuitServiceDeps,
+  ContingenciaServiceDeps,
+  InformeCaea,
 } from './services/index.js'
 
 // PDF

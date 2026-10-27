@@ -21,6 +21,8 @@ services:
       - ARCA_INGRESOS_BRUTOS=${ARCA_INGRESOS_BRUTOS:?ARCA_INGRESOS_BRUTOS is required}
       - ARCA_PTO_VTA_DEFAULT=${ARCA_PTO_VTA_DEFAULT:?ARCA_PTO_VTA_DEFAULT is required}
       - ARCA_PDF_FORMATO=${ARCA_PDF_FORMATO:-a4}
+      # Contingencia CAEA: punto de venta de tipo CAEA (vacío = deshabilitada)
+      - ARCA_CAEA_PTO_VTA=${ARCA_CAEA_PTO_VTA:-}
       - CERTS_DIR=/app/certs
       - ARCA_TA_DIR=/app/ta
       - ARCA_HTTP_HOST=0.0.0.0

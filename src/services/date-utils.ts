@@ -11,6 +11,22 @@ export function todayYmd(now: Date = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: AR_TZ }).format(now).replace(/-/g, '')
 }
 
+/** Fecha y hora actual (hora de Argentina) en formato YYYYMMDDHHMMSS, como pide CbteFchHsGen. */
+export function nowYmdHms(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: AR_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now)
+  const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? '00'
+  return `${get('year')}${get('month')}${get('day')}${get('hour')}${get('minute')}${get('second')}`
+}
+
 /** Formatea un Date a YYYYMMDD (componentes locales). */
 export function formatYmd(d: Date): string {
   const mm = String(d.getMonth() + 1).padStart(2, '0')

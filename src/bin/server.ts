@@ -16,6 +16,7 @@
  *
  * Opcionales:
  *   ARCA_ENV               - homologacion | produccion (default: homologacion)
+ *   ARCA_CAEA_PTO_VTA      - punto de venta CAEA: habilita la contingencia y su mantenimiento cada 30 min
  *   ARCA_HTTP_PORT         - default 3001
  *   CERTS_DIR              - default ./certs
  *   ARCA_DATOS_BANCARIOS   - datos bancarios opcionales
@@ -74,6 +75,13 @@ result.then(({ url }) => {
   // eslint-disable-next-line no-console
   console.log(`arca-api-tordini escuchando en ${url}`)
 })
+
+// Contingencia CAEA: pedir el CAEA de la quincena e informar lo emitido mientras ARCA esté disponible
+if (arca.contingencia) {
+  const contingencia = arca.contingencia
+  void contingencia.mantenimiento()
+  setInterval(() => void contingencia.mantenimiento(), 30 * 60_000).unref()
+}
 
 // Manejar shutdown limpio
 const shutdown = async (signal: string) => {

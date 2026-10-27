@@ -1,16 +1,17 @@
 import PQueue from 'p-queue'
 import { CONDICION_IVA_LABELS, DOC_TIPO, MONTO_MAX_CONSUMIDOR_FINAL, type CbteTipo } from '../domain/index.js'
 import { letraComprobante, prefijoArchivo } from '../domain/comprobante.js'
-import { ComprobanteRechazadoError, ValidationError } from '../domain/errors.js'
+import { ArcaError, ComprobanteRechazadoError, NetworkError, ValidationError } from '../domain/errors.js'
 import { calcularImportes } from '../domain/iva.js'
 import type { Logger } from '../domain/logger.js'
 import { EmitirComprobanteRequestSchema } from '../domain/schemas.js'
 import type { Emisor, EmisorProvider } from '../domain/types.js'
 import type { WsaaClient } from '../core/wsaa.js'
-import { parseErrores, parseObservaciones, type WsfeClient } from '../core/wsfe.js'
+import { parseErrores, parseObservaciones, type FeDetalle, type WsfeClient } from '../core/wsfe.js'
 import { tag } from '../core/xml.js'
 import type { PdfGenerator } from '../pdf/pdf-service.js'
 import type { ComprobanteEmitido, EmitirComprobanteRequest } from '../domain/types.js'
+import type { ContingenciaService } from './contingencia-service.js'
 import { todayYmd } from './date-utils.js'
 
 export interface BillingServiceDeps {
@@ -25,6 +26,20 @@ export interface BillingServiceDeps {
    * Default `MONTO_MAX_CONSUMIDOR_FINAL`; `0` desactiva la validación.
    */
   montoMaxConsumidorFinal?: number
+  /**
+   * Contingencia CAEA. Si está y ARCA no responde antes de pedir el CAE
+   * (login o número), el comprobante se autoriza con CAEA y queda pendiente de informar.
+   */
+  contingencia?: ContingenciaService
+}
+
+interface Autorizacion {
+  tipo: 'CAE' | 'CAEA'
+  ptoVta: number
+  nro: number
+  codigo: string
+  vencimiento: string
+  xml: string
 }
 
 /**
@@ -74,47 +89,29 @@ export class BillingService {
     }
 
     const emisor = await this.deps.emisor.getEmisor()
-    const { auth } = await this.deps.wsaa.authenticate(emisor.cuit)
-
-    const { nro, xml } = await this.queue.add(async () => {
-      const nro = await this.deps.wsfe.getNextNumber(auth, req.ptoVta, cbteTipo)
-      const xml = await this.deps.wsfe.fecaeSolicitar(auth, {
-        ptoVta: req.ptoVta,
-        cbteTipo,
-        concepto: req.concepto,
-        docTipo: req.receptor.docTipo,
-        docNro: req.receptor.docNro,
-        condIvaReceptor: req.receptor.condicionIVA,
-        cbteDesde: nro,
-        cbteHasta: nro,
-        fecha,
-        moneda: req.moneda,
-        cotizacion: req.cotizacion,
-        items: req.items,
-        cbtesAsoc: req.cbtesAsoc as EmitirComprobanteRequest['cbtesAsoc'],
-        fchServDesde: req.fchServDesde,
-        fchServHasta: req.fchServHasta,
-        fchVtoPago: req.fchVtoPago,
-      })
-      return { nro, xml }
-    })
-
-    const resultado = tag(xml, 'Resultado')
-    const cae = tag(xml, 'CAE') ?? ''
-    const vtoCae = tag(xml, 'CAEFchVto') ?? ''
-    const observaciones = parseObservaciones(xml)
-    if (resultado !== 'A' || !cae) {
-      throw new ComprobanteRechazadoError(cae || undefined, vtoCae || undefined, parseErrores(xml), observaciones)
+    const detalle: FeDetalle = {
+      cbteTipo,
+      concepto: req.concepto,
+      docTipo: req.receptor.docTipo,
+      docNro: req.receptor.docNro,
+      condIvaReceptor: req.receptor.condicionIVA,
+      fecha,
+      moneda: req.moneda,
+      cotizacion: req.cotizacion,
+      items: req.items,
+      cbtesAsoc: req.cbtesAsoc as EmitirComprobanteRequest['cbtesAsoc'],
+      fchServDesde: req.fchServDesde,
+      fchServHasta: req.fchServHasta,
+      fchVtoPago: req.fchVtoPago,
     }
-    if (observaciones.length > 0) {
-      this.deps.logger?.warn({ event: 'arca.billing.observaciones', observaciones }, 'CAE con observaciones')
-    }
+    const aut = await this.queue.add(() => this.autorizar(emisor.cuit, req.ptoVta, detalle))
+    const { ptoVta, nro, codigo: cae, vencimiento: vtoCae } = aut
 
     const fileName =
       `${prefijoArchivo(cbteTipo)}_${letraComprobante(cbteTipo)}_` +
-      `${String(req.ptoVta).padStart(5, '0')}-${String(nro).padStart(8, '0')}.pdf`
+      `${String(ptoVta).padStart(5, '0')}-${String(nro).padStart(8, '0')}.pdf`
     this.deps.logger?.info(
-      { event: 'arca.billing.emitido', cbteTipo, ptoVta: req.ptoVta, nro, cae },
+      { event: 'arca.billing.emitido', cbteTipo, ptoVta, nro, cae, tipoAutorizacion: aut.tipo },
       'Comprobante emitido',
     )
 
@@ -123,10 +120,12 @@ export class BillingService {
       vtoCae,
       nroComprobante: nro,
       cbteTipo,
-      ptoVta: req.ptoVta,
+      ptoVta,
       importeTotal,
       fileName,
-      xml,
+      xml: aut.xml,
+      tipoAutorizacion: aut.tipo,
+      pendienteInformar: aut.tipo === 'CAEA',
     }
 
     // El CAE ya está asignado: un fallo del PDF no puede perder el resultado
@@ -134,7 +133,7 @@ export class BillingService {
       try {
         result.pdfBuffer = await this.deps.pdf.generateFacturaPdf(
           {
-            ptoVta: req.ptoVta,
+            ptoVta,
             cbteTipo,
             nro,
             fecha,
@@ -146,6 +145,7 @@ export class BillingService {
             nroDocRec: req.receptor.docNro,
             cae,
             vtoCae,
+            tipoCodAut: aut.tipo === 'CAEA' ? 'A' : 'E',
             items: req.items,
             condicionIvaEmisor: emisor.condicionIva,
             razonSocialEmisor: emisor.razonSocial,
@@ -170,6 +170,49 @@ export class BillingService {
     }
 
     return result
+  }
+
+  /**
+   * Pide número + CAE. Si ARCA no responde antes de mandar FECAESolicitar y hay
+   * contingencia, autoriza con CAEA. Si se corta durante FECAESolicitar no cae a CAEA:
+   * ARCA pudo haberlo autorizado y se duplicaría la venta.
+   */
+  private async autorizar(cuit: number, ptoVta: number, detalle: FeDetalle): Promise<Autorizacion> {
+    const { wsaa, wsfe, contingencia, logger } = this.deps
+    let auth
+    let nro: number
+    try {
+      auth = (await wsaa.authenticate(cuit)).auth
+      nro = await wsfe.getNextNumber(auth, ptoVta, detalle.cbteTipo)
+    } catch (err) {
+      if (!(err instanceof NetworkError) || !contingencia) throw err
+      logger?.warn({ event: 'arca.billing.contingencia', err: err.message }, 'ARCA no responde: se emite con CAEA')
+      const c = await contingencia.emitirConCaea(detalle)
+      return { tipo: 'CAEA', ptoVta: c.ptoVta, nro: c.nro, codigo: c.caea.caea, vencimiento: c.caea.fchVigHasta, xml: '' }
+    }
+
+    let xml: string
+    try {
+      xml = await wsfe.fecaeSolicitar(auth, { ...detalle, ptoVta, cbteDesde: nro, cbteHasta: nro })
+    } catch (err) {
+      if (!(err instanceof NetworkError)) throw err
+      throw new ArcaError(
+        `No se sabe si ARCA autorizó el comprobante ${ptoVta}-${nro}: consultalo con comprobantes.consultar() antes de reintentar`,
+        'CAE_RESULTADO_INCIERTO',
+        { ptoVta, cbteTipo: detalle.cbteTipo, nro, err: err.message },
+      )
+    }
+
+    const cae = tag(xml, 'CAE') ?? ''
+    const vtoCae = tag(xml, 'CAEFchVto') ?? ''
+    const observaciones = parseObservaciones(xml)
+    if (tag(xml, 'Resultado') !== 'A' || !cae) {
+      throw new ComprobanteRechazadoError(cae || undefined, vtoCae || undefined, parseErrores(xml), observaciones)
+    }
+    if (observaciones.length > 0) {
+      logger?.warn({ event: 'arca.billing.observaciones', observaciones }, 'CAE con observaciones')
+    }
+    return { tipo: 'CAE', ptoVta, nro, codigo: cae, vencimiento: vtoCae, xml }
   }
 }
 

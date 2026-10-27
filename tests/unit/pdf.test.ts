@@ -157,3 +157,14 @@ describe('renderTicketHtml', () => {
     expect(html).toContain('IVA 10,5 %')
   })
 })
+
+describe('comprobante con CAEA', () => {
+  it('QR con tipoCodAut A y etiqueta CAEA en factura y ticket', () => {
+    const data = facturaB({ tipoCodAut: 'A', cae: '92026102000000' })
+    const payload = JSON.parse(Buffer.from(new URL(buildQrUrl(data)).searchParams.get('p')!, 'base64').toString())
+    expect(payload).toMatchObject({ tipoCodAut: 'A', codAut: 92026102000000 })
+    expect(renderFacturaHtml(facturaTemplate, data, '')).toContain('CAEA N°:</b> 92026102000000')
+    expect(renderTicketHtml(ticketTemplate, data, '')).toContain('CAEA: 92026102000000')
+    expect(renderFacturaHtml(facturaTemplate, facturaB(), '')).toContain('CAE N°:</b> 86431024007837')
+  })
+})

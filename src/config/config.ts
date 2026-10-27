@@ -64,6 +64,10 @@ export interface ArcaConfig {
    * (DocTipo 99). `0` desactiva la validación.
    */
   montoMaxConsumidorFinal: number
+  /** Contingencia CAEA. `ptoVta` null = deshabilitada. */
+  contingencia: {
+    ptoVta: number | null
+  }
   /** Nivel de logging. */
   logLevel: LogLevel
 }
@@ -174,6 +178,9 @@ export function loadConfig(options: {
       anchoTicketMm: Number(env.ARCA_PDF_TICKET_MM ?? 80),
     },
     montoMaxConsumidorFinal: Number(env.ARCA_MONTO_MAX_CF ?? MONTO_MAX_CONSUMIDOR_FINAL),
+    contingencia: {
+      ptoVta: (env.ARCA_CAEA_PTO_VTA ?? '').toString().trim() ? Number(env.ARCA_CAEA_PTO_VTA) : null,
+    },
     logLevel: ((env.ARCA_LOG_LEVEL ?? 'info').toString() as LogLevel),
   }
 
@@ -213,5 +220,6 @@ export interface ArcaConfigEnv {
   ARCA_PDF_FORMATO?: string
   ARCA_PDF_TICKET_MM?: string
   ARCA_MONTO_MAX_CF?: string
+  ARCA_CAEA_PTO_VTA?: string
   ARCA_LOG_LEVEL?: string
 }
