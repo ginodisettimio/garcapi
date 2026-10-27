@@ -12,7 +12,7 @@ import {
   type DocTipo,
   type Moneda,
 } from './constants.js'
-import { IVA_ID_ALLOWED, IVA_PERCENT_ALLOWED } from './iva.js'
+import { isValidIvaInput } from './iva.js'
 import { isA, isB, isC, isNota } from './comprobante.js'
 
 /** Validador Zod del request de emisión de comprobante. */
@@ -138,13 +138,9 @@ export const EmitirComprobanteRequestSchema = z
       }
     }
 
-    // Regla 6: alícuotas de IVA válidas
+    // Regla 6: alícuotas de IVA válidas (siempre en porcentaje)
     for (let i = 0; i < v.items.length; i++) {
-      const it = v.items[i]!
-      const ivaVal = it.iva
-      const isValidIva =
-        IVA_PERCENT_ALLOWED.includes(ivaVal) || IVA_ID_ALLOWED.includes(ivaVal)
-      if (!isValidIva) {
+      if (!isValidIvaInput(v.items[i]!.iva)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'iva_invalido',
@@ -155,7 +151,7 @@ export const EmitirComprobanteRequestSchema = z
 
     // Regla 7: C no lleva IVA discriminado
     if (isC(cbteTipo)) {
-      const hasGravado = v.items.some((x) => x.iva !== 0 && x.iva !== 3)
+      const hasGravado = v.items.some((x) => x.iva !== 0)
       if (hasGravado) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
@@ -165,9 +161,7 @@ export const EmitirComprobanteRequestSchema = z
       }
     } else {
       // Regla 8: A y B deben tener al menos un item gravado
-      const hasGravado = v.items.some((x) =>
-        [2.5, 5, 10.5, 21, 27, 4, 5, 6, 8, 9].includes(x.iva),
-      )
+      const hasGravado = v.items.some((x) => x.iva > 0)
       if (!hasGravado) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

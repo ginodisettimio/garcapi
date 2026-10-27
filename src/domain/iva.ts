@@ -1,5 +1,6 @@
 import type { CbteTipo } from './constants.js'
 import { isC } from './comprobante.js'
+import { ValidationError } from './errors.js'
 import type { Item } from './types.js'
 
 /**
@@ -37,32 +38,21 @@ export const IVA_PERCENT_ALLOWED: readonly number[] = [0, 2.5, 5, 10.5, 21, 27]
 export const IVA_ID_ALLOWED: readonly number[] = [3, 4, 5, 6, 8, 9]
 
 /**
- * Resuelve el {id, pct} de AFIP a partir de un valor que puede ser
- * tanto un porcentaje (21, 10.5, ...) como un ID (5, 4, ...).
+ * Resuelve el {id, pct} de AFIP a partir del porcentaje de IVA del ítem.
+ * El valor se interpreta SIEMPRE como porcentaje: `5` es 5 % (Id 8), no el Id 5 (21 %).
  *
- * Si el valor es un ID conocido, se usa ese. Si no, se interpreta
- * como porcentaje. Si no matchea ninguno, devuelve 0% / Id 3.
- *
- * Ej: 5 → {id: 5, pct: 21} (id 5 = 21% en AFIP)
- *     21 → {id: 5, pct: 21}
- *     8 → {id: 8, pct: 5}   (id 8 = 5% en AFIP)
- *     5.5 → {id: 3, pct: 0}  (no existe)
+ * @throws ValidationError si el porcentaje no es una alícuota admitida.
  */
-export function mapAlicuota(iva: number): { id: number; pct: number } {
-  // Primero IDs (son más "canónicos" en errores de AFIP)
-  if (Object.prototype.hasOwnProperty.call(IVA_ID_TO_PERCENT, iva)) {
-    return { id: iva, pct: IVA_ID_TO_PERCENT[iva]! }
+export function mapAlicuota(pct: number): { id: number; pct: number } {
+  if (!Object.prototype.hasOwnProperty.call(IVA_PERCENT_TO_ID, pct)) {
+    throw new ValidationError(`Alícuota de IVA inválida: ${pct}. Valores admitidos: ${IVA_PERCENT_ALLOWED.join(', ')}`)
   }
-  // Luego porcentajes
-  if (Object.prototype.hasOwnProperty.call(IVA_PERCENT_TO_ID, iva)) {
-    return { id: IVA_PERCENT_TO_ID[iva]!, pct: iva }
-  }
-  return { id: 3, pct: 0 }
+  return { id: IVA_PERCENT_TO_ID[pct]!, pct }
 }
 
-/** Comprueba si un valor de IVA es admisible (porcentaje o ID). */
-export function isValidIvaInput(value: number): boolean {
-  return IVA_PERCENT_ALLOWED.includes(value) || IVA_ID_ALLOWED.includes(value)
+/** Comprueba si un porcentaje de IVA es una alícuota admitida. */
+export function isValidIvaInput(pct: number): boolean {
+  return IVA_PERCENT_ALLOWED.includes(pct)
 }
 
 /** Redondea a 2 decimales (centavos). */

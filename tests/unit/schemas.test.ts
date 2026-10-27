@@ -191,4 +191,19 @@ describe('EmitirComprobanteRequestSchema', () => {
     expect(r.moneda).toBe('PES')
     expect(r.cotizacion).toBe(1)
   })
+
+  it('rechaza ids de AFIP como iva (4 no es un porcentaje)', () => {
+    const r = EmitirComprobanteRequestSchema.safeParse(
+      validInput({ items: [{ descripcion: 'x', cantidad: 1, precioUnitario: 100, iva: 4 }] }),
+    )
+    expect(r.success).toBe(false)
+    if (!r.success) expect(r.error.issues.some((i) => i.message === 'iva_invalido')).toBe(true)
+  })
+
+  it('acepta iva 5 como 5 %', () => {
+    const r = EmitirComprobanteRequestSchema.safeParse(
+      validInput({ items: [{ descripcion: 'x', cantidad: 1, precioUnitario: 100, iva: 5 }] }),
+    )
+    expect(r.success).toBe(true)
+  })
 })

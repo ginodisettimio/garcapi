@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { mapAlicuota, isValidIvaInput, calcularImportes } from '../../src/domain/iva.js'
+import { ValidationError } from '../../src/domain/errors.js'
 
 describe('iva helpers', () => {
   it('mapAlicuota: percent → {id, pct}', () => {
@@ -10,27 +11,23 @@ describe('iva helpers', () => {
     expect(mapAlicuota(27)).toEqual({ id: 6, pct: 27 })
   })
 
-  it('mapAlicuota: id → {id, pct}', () => {
-    expect(mapAlicuota(3)).toEqual({ id: 3, pct: 0 })
-    expect(mapAlicuota(4)).toEqual({ id: 4, pct: 10.5 })
-    expect(mapAlicuota(5)).toEqual({ id: 5, pct: 21 })
-    expect(mapAlicuota(6)).toEqual({ id: 6, pct: 27 })
-    expect(mapAlicuota(8)).toEqual({ id: 8, pct: 5 })
-    expect(mapAlicuota(9)).toEqual({ id: 9, pct: 2.5 })
+  it('mapAlicuota: 5 es 5 % (id 8), no el id 5 (21 %)', () => {
+    expect(mapAlicuota(5)).toEqual({ id: 8, pct: 5 })
   })
 
-  it('mapAlicuota: unknown value → default 0% / id 3', () => {
-    expect(mapAlicuota(99)).toEqual({ id: 3, pct: 0 })
-    expect(mapAlicuota(15)).toEqual({ id: 3, pct: 0 })
+  it('mapAlicuota: ids de AFIP y valores desconocidos lanzan ValidationError', () => {
+    for (const v of [3, 4, 6, 8, 9, 15, 99]) {
+      expect(() => mapAlicuota(v)).toThrow(ValidationError)
+    }
   })
 
-  it('isValidIvaInput', () => {
+  it('isValidIvaInput: solo porcentajes', () => {
     expect(isValidIvaInput(0)).toBe(true)
-    expect(isValidIvaInput(21)).toBe(true)
-    expect(isValidIvaInput(3)).toBe(true)
     expect(isValidIvaInput(5)).toBe(true)
+    expect(isValidIvaInput(21)).toBe(true)
+    expect(isValidIvaInput(3)).toBe(false)
+    expect(isValidIvaInput(4)).toBe(false)
     expect(isValidIvaInput(99)).toBe(false)
-    expect(isValidIvaInput(7)).toBe(false)
   })
 })
 
@@ -48,6 +45,12 @@ describe('calcularImportes', () => {
     expect(r.impNeto).toBe(280.3)
     expect(r.impIva).toBe(55.68)
     expect(r.impTotal).toBe(335.98)
+  })
+
+  it('B: item al 5 % se factura al 5 %', () => {
+    const r = calcularImportes(6, [{ descripcion: 'x', cantidad: 1, precioUnitario: 100, iva: 5 }])
+    expect(r.alicuotas).toEqual([{ id: 8, baseImp: 100, importe: 5 }])
+    expect(r.impTotal).toBe(105)
   })
 
   it('B: README quick start (826.45 + 21%)', () => {
