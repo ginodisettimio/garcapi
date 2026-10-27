@@ -42,7 +42,7 @@ export function createArcaRouter(deps: ArcaRouterDeps): ExpressRouter {
 
   router.use(
     '/afip',
-    createAuthRoutes({ wsaa: deps.wsaa }),
+    createAuthRoutes({ wsaa: deps.wsaa, auth }),
   )
   router.use(
     '/afip',

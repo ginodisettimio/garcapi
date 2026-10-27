@@ -47,8 +47,10 @@ describe('createArcaServer: CORS y auth', () => {
     expect(res.headers['vary']).toBeUndefined()
   })
 
-  it('con ARCA_JWT_SECRET las rutas sin token devuelven 401', async () => {
-    const res = await request(makeApp(['*'], 'secreto')).post('/afip/facturas').send({})
-    expect(res.status).toBe(401)
+  it('con ARCA_JWT_SECRET las rutas sin token devuelven 401 (incluido fa-auth/status)', async () => {
+    const app = makeApp(['*'], 'secreto')
+    expect((await request(app).post('/afip/facturas').send({})).status).toBe(401)
+    expect((await request(app).get('/afip/fa-auth/status')).status).toBe(401)
+    expect((await request(app).get('/health')).status).toBe(200)
   })
 })

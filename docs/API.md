@@ -33,7 +33,7 @@ Cómo consumir el servicio de facturación: endpoints, requests, respuestas y er
 
 ## Autenticación
 
-Si el server tiene `ARCA_JWT_SECRET` (obligatorio en producción), las rutas `/afip/facturas`, `/afip/comprobantes/*` y `/afip/cuit/*` piden un JWT:
+Si el server tiene `ARCA_JWT_SECRET` (obligatorio en producción), todas las rutas `/afip/*` piden un JWT (solo `/health` es pública):
 
 ```
 Authorization: Bearer <token>
@@ -437,7 +437,11 @@ Los campos que ARCA no informa no aparecen en la respuesta. Errores: 400 si el C
 
 ### `GET /afip/fa-auth/status`
 
-Estado del ticket de acceso (TA) de WSAA que usa el servicio. Si no hay uno vigente, lo renueva. Sirve para diagnosticar el certificado.
+Estado del ticket de acceso (TA) de WSAA que usa el servicio. Si no hay uno vigente, lo renueva. Sirve para diagnosticar el certificado. Requiere JWT.
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" https://facturacion.example.com/afip/fa-auth/status
+```
 
 ```json
 {
@@ -454,8 +458,6 @@ Estado del ticket de acceso (TA) de WSAA que usa el servicio. Si no hay uno vige
   "taPath": "/app/ta/homologacion/TA_wsfe.xml"
 }
 ```
-
-> Hoy este endpoint **no pide JWT**. No lo expongas públicamente.
 
 ---
 
