@@ -16,6 +16,11 @@ export interface ArcaServerDeps extends ArcaRouterDeps {
  */
 export function createArcaServer(deps: ArcaServerDeps): Express {
   const app = express()
+  app.disable('x-powered-by')
+  app.use((_req: Request, res: Response, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    next()
+  })
   const logger =
     deps.logger ??
     new ConsoleLogger((deps.config.logLevel ?? 'info') as LogLevel)

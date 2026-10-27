@@ -16,6 +16,8 @@ export interface ArcaRouterDeps {
   cuit: CuitService
   /** Secret para JWT. Si es null/vacío, los endpoints no requieren auth. */
   jwtSecret: string | null
+  /** Antigüedad máxima aceptada de un JWT (ej. '12h', por el claim `iat`). Sin valor: solo se valida `exp`. */
+  jwtMaxAge?: string | null
   /** Si true, los endpoints de billing devuelven el PDF binario. */
   sendPdfAsBinary?: boolean
 }
@@ -38,7 +40,7 @@ export interface ArcaRouterDeps {
  */
 export function createArcaRouter(deps: ArcaRouterDeps): ExpressRouter {
   const router = Router()
-  const auth = createAuthMiddleware({ secret: deps.jwtSecret })
+  const auth = createAuthMiddleware({ secret: deps.jwtSecret, maxAge: deps.jwtMaxAge })
 
   router.use(
     '/afip',

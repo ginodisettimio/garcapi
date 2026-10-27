@@ -11,6 +11,9 @@ const STATUS_BY_CODE: Record<string, number> = {
   CAE_RESULTADO_INCIERTO: 504,
 }
 
+/** Códigos 5xx cuyos `details` le sirven al cliente para decidir qué hacer (el resto se loguea y no se expone). */
+const DETAILS_PUBLICOS = new Set(['CAE_RESULTADO_INCIERTO', 'CAEA_NO_DISPONIBLE'])
+
 /**
  * Crea un middleware de error handler que mapea `ArcaError`
  * a respuestas HTTP uniformes `{ ok: false, error, code, ... }`.
@@ -28,6 +31,10 @@ export function createErrorHandlerMiddleware(opts: { logger?: Logger } = {}) {
       return
     }
     if (err instanceof ComprobanteRechazadoError) {
+      opts.logger?.warn(
+        { event: 'http.comprobante_rechazado', path: req.path, errores: err.errores, observaciones: err.observaciones },
+        'ARCA rechazó el comprobante',
+      )
       res.status(502).json({
         ok: false,
         error: err.message,
@@ -40,6 +47,10 @@ export function createErrorHandlerMiddleware(opts: { logger?: Logger } = {}) {
       return
     }
     if (err instanceof WsfeError) {
+      opts.logger?.error(
+        { event: 'http.wsfe_error', path: req.path, code: err.code, err: err.message, errores: err.errores },
+        'Error de ARCA (WSFE)',
+      )
       res.status(502).json({
         ok: false,
         error: err.message,
@@ -53,11 +64,17 @@ export function createErrorHandlerMiddleware(opts: { logger?: Logger } = {}) {
     }
     if (err instanceof ArcaError) {
       const status = STATUS_BY_CODE[err.code] ?? 500
+      if (status >= 500) {
+        opts.logger?.error(
+          { event: 'http.error', path: req.path, code: err.code, err: err.message, details: err.details },
+          'Error al procesar la request',
+        )
+      }
       res.status(status).json({
         ok: false,
         error: err.message,
         code: err.code,
-        details: err.details,
+        ...(status < 500 || DETAILS_PUBLICOS.has(err.code) ? { details: err.details } : {}),
       })
       return
     }
@@ -67,10 +84,6 @@ export function createErrorHandlerMiddleware(opts: { logger?: Logger } = {}) {
       { event: 'http.unhandled_error', path: req.path, err: String(err), stack: e?.stack },
       'Unhandled error in HTTP handler',
     )
-    res.status(500).json({
-      ok: false,
-      error: e?.message ?? String(err),
-      code: 'INTERNAL_ERROR',
-    })
+    res.status(500).json({ ok: false, error: 'Error interno', code: 'INTERNAL_ERROR' })
   }
 }

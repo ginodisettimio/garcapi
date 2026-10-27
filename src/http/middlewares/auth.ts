@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from 'express'
 
 /**
- * Crea un middleware de autenticación JWT.
+ * Crea un middleware de autenticación JWT (HS256).
  * Si `secret` es null/empty, el middleware deja pasar (no auth).
+ * Con `maxAge` (ej. '12h') se rechazan los tokens emitidos (claim `iat`) hace más que eso.
  */
-export function createAuthMiddleware(opts: { secret: string | null }) {
+export function createAuthMiddleware(opts: { secret: string | null; maxAge?: string | null }) {
   if (!opts.secret) {
     return (_req: Request, _res: Response, next: NextFunction) => next()
   }
@@ -20,7 +21,10 @@ export function createAuthMiddleware(opts: { secret: string | null }) {
           return
         }
         try {
-          const decoded = jwt.verify(token, opts.secret!) as Record<string, unknown>
+          const decoded = jwt.verify(token, opts.secret!, {
+            algorithms: ['HS256'],
+            ...(opts.maxAge ? { maxAge: opts.maxAge } : {}),
+          }) as Record<string, unknown>
           ;(req as Request & { user?: Record<string, unknown> }).user = {
             id: decoded.id,
             role: decoded.role,

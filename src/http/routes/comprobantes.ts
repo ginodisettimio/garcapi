@@ -3,15 +3,14 @@ import type { ComprobantesService } from '../../services/comprobantes-service.js
 import { isCbteTipo } from '../../domain/comprobante.js'
 import { ValidationError } from '../../domain/errors.js'
 import type { AuthMiddleware } from '../middlewares/auth.js'
-import { createAuthMiddleware } from '../middlewares/auth.js'
 
 export interface ComprobantesRoutesDeps {
   comprobantes: ComprobantesService
   auth: AuthMiddleware
 }
 
-function isValidCbteTipo(n: number): boolean {
-  return isCbteTipo(n)
+function isPositiveInt(n: number): boolean {
+  return Number.isInteger(n) && n > 0
 }
 
 /**
@@ -21,16 +20,16 @@ function isValidCbteTipo(n: number): boolean {
  */
 export function createComprobantesRoutes(deps: ComprobantesRoutesDeps) {
   const r = Router()
-  const auth = deps.auth ?? createAuthMiddleware({ secret: null })
+  const { auth } = deps
 
   r.get('/comprobantes/ultimo', auth, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ptoVta = Number(req.query.ptoVta)
       const tipo = Number(req.query.tipo)
-      if (!Number.isFinite(ptoVta) || !Number.isFinite(tipo)) {
-        throw new ValidationError('ptoVta y tipo son requeridos y deben ser numéricos')
+      if (!isPositiveInt(ptoVta) || !isPositiveInt(tipo)) {
+        throw new ValidationError('ptoVta y tipo son requeridos y deben ser enteros positivos')
       }
-      if (!isValidCbteTipo(tipo)) {
+      if (!isCbteTipo(tipo)) {
         throw new ValidationError(`tipo de comprobante inválido: ${tipo}`)
       }
       const last = await deps.comprobantes.ultimoAutorizado(ptoVta, tipo as never)
@@ -48,10 +47,10 @@ export function createComprobantesRoutes(deps: ComprobantesRoutesDeps) {
         const ptoVta = Number(req.params.ptoVta)
         const tipo = Number(req.params.tipo)
         const nro = Number(req.params.nro)
-        if (!Number.isFinite(ptoVta) || !Number.isFinite(tipo) || !Number.isFinite(nro)) {
-          throw new ValidationError('ptoVta, tipo y nro son requeridos y deben ser numéricos')
+        if (!isPositiveInt(ptoVta) || !isPositiveInt(tipo) || !isPositiveInt(nro)) {
+          throw new ValidationError('ptoVta, tipo y nro son requeridos y deben ser enteros positivos')
         }
-        if (!isValidCbteTipo(tipo)) {
+        if (!isCbteTipo(tipo)) {
           throw new ValidationError(`tipo de comprobante inválido: ${tipo}`)
         }
         const xml = await deps.comprobantes.consultar(ptoVta, tipo as never, nro)

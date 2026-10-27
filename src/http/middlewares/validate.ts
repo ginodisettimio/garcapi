@@ -15,6 +15,7 @@ export function createValidateMiddleware() {
         res.status(400).json({
           ok: false,
           error: 'validation_failed',
+          code: 'VALIDATION_ERROR',
           issues: result.error.issues.map((i) => ({
             path: i.path,
             message: i.message,
